@@ -183,6 +183,7 @@
   .method-badge.pdf{ background:#4a3b14; color:var(--warn); }
   .method-badge.mixed{ background:#3a2a5e; color:#c7a8ff; }
   .method-badge.platform{ background:#1e3a29; color:var(--ok); }
+  .method-badge.phone{ background:#4a1e18; color:var(--danger); }
 
   .detail-section{
     border:1px solid var(--line); border-radius:8px; margin-bottom:10px; overflow:hidden;
@@ -407,6 +408,7 @@
           <option value="pdf">📄 PDF/Email form only</option>
           <option value="mixed">🔀 Mixed (website + documents)</option>
           <option value="platform">🔑 Platform portal (iSqFt/BuildingConnected/Procore)</option>
+          <option value="phone">📞 Direct contact (over the phone)</option>
         </select>
       </div>
     </div>
@@ -777,7 +779,8 @@ function renderCards(filter){
         website: { text: '🌐 Website only', cls: 'website' },
         pdf: { text: '📄 PDF/Email form', cls: 'pdf' },
         mixed: { text: '🔀 Mixed', cls: 'mixed' },
-        platform: { text: '🔑 Platform portal', cls: 'platform' }
+        platform: { text: '🔑 Platform portal', cls: 'platform' },
+        phone: { text: '📞 Direct contact', cls: 'phone' }
       };
       const m = methodLabels[detail.applicationMethod];
       if (m){
