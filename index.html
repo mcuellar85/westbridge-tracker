@@ -1,0 +1,1782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Westbridge — Prequalification Dashboard</title>
+<style>
+  :root{
+    --bg: #17171A;
+    --panel: #201F23;
+    --panel-2: #29282D;
+    --line: #38373D;
+    --text: #EDEAE4;
+    --text-dim: #A6A3A0;
+    --safety: #FF6A1A;
+    --safety-dim: #7A3814;
+    --ok: #4FAE72;
+    --ok-dim: #1E3A29;
+    --warn: #E8B93C;
+    --warn-dim: #4A3B14;
+    --danger: #E1503F;
+    --danger-dim: #4A1E18;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 14px),
+      var(--bg);
+    color:var(--text);
+    font-family: ui-sans-serif, "Segoe UI", Helvetica, Arial, sans-serif;
+    padding: 28px 20px 60px;
+  }
+  .wrap{ max-width: 1180px; margin: 0 auto; }
+
+  header{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    flex-wrap:wrap; gap:16px;
+    border-bottom: 2px solid var(--line);
+    padding-bottom:18px; margin-bottom: 22px;
+  }
+  .brand-eyebrow{
+    font-size:11px; letter-spacing:0.16em; text-transform:uppercase;
+    color:var(--safety); font-weight:700; margin-bottom:6px;
+  }
+  h1{ font-size: 30px; margin:0; font-weight:800; letter-spacing:-0.01em; }
+  h1 span{ color: var(--text-dim); font-weight:500; }
+  .sync{ text-align:right; font-size:12px; color:var(--text-dim); line-height:1.6; }
+  .sync b{ color:var(--text); }
+  .sync #liveDot{ display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--ok); margin-right:5px; }
+  .sync #liveDot.err{ background:var(--danger); }
+  .sync #liveDot.stale{ background:var(--warn); }
+
+  .stats{ display:grid; grid-template-columns: repeat(4,1fr); gap:12px; margin-bottom:22px; }
+  .stat{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .stat .num{ font-size:26px; font-weight:800; line-height:1; }
+  .stat .lbl{ font-size:11.5px; color:var(--text-dim); margin-top:6px; text-transform:uppercase; letter-spacing:0.05em;}
+  .stat.ok .num{ color:var(--ok); }
+  .stat.warn .num{ color:var(--warn); }
+  .stat.danger .num{ color:var(--danger); }
+
+  .banner{
+    display:flex; align-items:center; gap:14px;
+    background: linear-gradient(90deg, var(--danger-dim), transparent 85%);
+    border:1px solid var(--danger); border-left-width:5px;
+    border-radius:8px; padding:12px 16px; margin-bottom: 26px;
+  }
+  .banner .stamp{
+    flex-shrink:0; width:54px; height:54px; border-radius:50%;
+    border:3px solid var(--danger); color:var(--danger);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:18px; transform: rotate(-8deg);
+  }
+  .banner p{ margin:0; font-size:13.5px; color:var(--text); flex:1; }
+  .banner b{ color:var(--danger); }
+  .banner .edit-note-btn{
+    flex-shrink:0; background:transparent; border:1px solid var(--danger); color:var(--danger);
+    border-radius:6px; padding:5px 10px; font-size:11.5px; font-weight:700; cursor:pointer;
+  }
+
+  .filters{ display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; align-items:center; }
+  .filter-btn{
+    background:var(--panel); border:1px solid var(--line); color:var(--text-dim);
+    padding:7px 14px; border-radius:999px; font-size:12.5px; cursor:pointer;
+    font-weight:600; transition: all .15s ease;
+  }
+  .filter-btn:hover{ border-color:var(--safety); color:var(--text); }
+  .filter-btn.active{ background:var(--safety); border-color:var(--safety); color:#1a1a1a; }
+  .refresh-btn{
+    margin-left:auto; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    padding:7px 14px; border-radius:999px; font-size:12.5px; cursor:pointer; font-weight:600;
+  }
+  .refresh-btn:hover{ border-color:var(--safety); }
+
+  .grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap:16px; }
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:18px 18px 16px; position:relative; overflow:hidden;
+    transition: border-color .15s ease;
+  }
+  .card:hover{ border-color:var(--safety); cursor:pointer; box-shadow: 0 0 0 1px var(--safety) inset; }
+  .edit-hint{ position:absolute; top:14px; right:16px; font-size:10.5px; font-weight:700; color:var(--text-dim); opacity:0; transition:opacity .15s ease; }
+  .card:hover .edit-hint{ opacity:1; color:var(--safety); }
+  .card::before{ content:""; position:absolute; top:0; left:0; width:100%; height:4px; }
+  .card.status-submitted::before{ background: var(--ok); }
+  .card.status-pending::before{ background: var(--warn); }
+  .card.status-blocked::before{ background: var(--danger); }
+
+  .card-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px;}
+  .gc-name{ font-size:17px; font-weight:800; margin:0 0 3px; }
+  .gc-sub{ font-size:11.5px; color:var(--text-dim); }
+
+  .badge{
+    font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:0.05em;
+    padding:4px 9px; border-radius:5px; white-space:nowrap;
+  }
+  .badge.submitted{ background:var(--ok-dim); color:var(--ok); }
+  .badge.pending{ background:var(--warn-dim); color:var(--warn); }
+  .badge.blocked{ background:var(--danger-dim); color:var(--danger); }
+
+  .card-body{ font-size:12.8px; color:var(--text-dim); margin: 12px 0; line-height:1.5; }
+
+  .tag-row{ display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .tag{ font-size:10.5px; padding:3px 8px; border-radius:5px; border:1px solid var(--line); color:var(--text-dim); font-weight:600; }
+  .tag.auto{ border-color:var(--danger); color:var(--danger); }
+  .tag.auto.ok{ border-color:var(--ok); color:var(--ok); }
+
+  .meta-row{ display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; font-size:11.5px; color:var(--text-dim); }
+  .meta-row b{ color:var(--text); font-weight:700; }
+
+  .blockers{ margin-top:12px; border-top:1px solid var(--line); padding-top:10px; }
+  .blockers-title{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-dim); font-weight:700; margin-bottom:6px;}
+  .blockers ul{ margin:0; padding-left:16px; font-size:12px; color:var(--text); line-height:1.65; }
+  .blockers.none ul{ color: var(--ok); padding-left:0; list-style:none; }
+
+  .msg{ padding: 40px; text-align:center; color:var(--text-dim); font-size:13px; grid-column:1/-1; line-height:1.7; }
+  .msg code{ background:var(--panel-2); padding:2px 6px; border-radius:4px; }
+
+  footer{
+    margin-top: 34px; padding-top:16px; border-top:1px solid var(--line);
+    font-size:11.5px; color:var(--text-dim); text-align:center; line-height:1.7;
+  }
+
+  .overlay{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6);
+    align-items:center; justify-content:center; z-index:100; padding:20px;
+  }
+  .overlay.open{ display:flex; }
+  .modal{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    width:100%; max-width:520px; padding:22px 22px 18px;
+    max-height:88vh; overflow-y:auto;
+  }
+  .modal h2{ margin:0 0 16px; font-size:18px; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:11.5px; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-dim); font-weight:700; margin-bottom:6px; }
+  .field textarea{ width:100%; min-height:90px; background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:7px; padding:9px 10px; font-size:13.5px; font-family:inherit; resize:vertical;}
+  .radio-row{ display:flex; gap:14px; }
+  .radio-row label{ display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text); text-transform:none; letter-spacing:0; font-weight:500; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+  .btn{ padding:9px 16px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; border:1px solid var(--line); background:var(--panel-2); color:var(--text); }
+  .btn.primary{ background:var(--safety); border-color:var(--safety); color:#1a1a1a; }
+
+  /* Vendor detail panel */
+  .detail-modal{ max-width:640px; }
+
+  .link-apply-box{
+    background:var(--safety-dim); border:2px solid var(--safety); border-radius:10px;
+    padding:14px 16px; margin: 14px 0 18px;
+  }
+  .link-apply-title{ font-size:13px; font-weight:800; color:var(--safety); margin-bottom:8px; }
+  .link-apply-box .form-link-box{ margin-bottom:0; background:var(--panel); }
+
+  .detail-section{
+    border:1px solid var(--line); border-radius:8px; margin-bottom:10px; overflow:hidden;
+  }
+  .detail-section summary{
+    cursor:pointer; padding:12px 14px; font-size:12.5px; font-weight:700; color:var(--text);
+    background:var(--panel-2); list-style:none; display:flex; align-items:center; justify-content:space-between;
+    user-select:none;
+  }
+  .detail-section summary::-webkit-details-marker{ display:none; }
+  .detail-section summary::after{ content:"▸"; color:var(--text-dim); font-size:11px; transition:transform .15s ease; }
+  .detail-section[open] summary::after{ transform:rotate(90deg); }
+  .detail-section summary:hover{ color:var(--safety); }
+  .detail-section > *:not(summary){ padding:0 14px; }
+  .detail-section > div:last-child, .detail-section > *:last-child{ padding-bottom:14px; }
+  .detail-section .checklist, .detail-section #estimatesBox, .detail-section #emailLogBox,
+  .detail-section .cheat-note, .detail-section .file-upload-box, .detail-section .add-item-row,
+  .detail-section .field{ margin-top:12px; }
+  .detail-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:6px; position:sticky; top:-22px; background:var(--panel); padding:8px 0 6px; margin-top:-8px; z-index:5; }
+  .detail-head h2{ margin:0; font-size:20px; }
+  .detail-head .sub{ font-size:12px; color:var(--text-dim); margin-top:2px; }
+  .close-x{ background:none; border:none; color:var(--text-dim); font-size:20px; cursor:pointer; line-height:1; padding:2px 6px; }
+  .close-x:hover{ color:var(--text); }
+
+  .progress-wrap{ margin: 14px 0 20px; }
+  .progress-label{ display:flex; justify-content:space-between; font-size:11.5px; color:var(--text-dim); margin-bottom:6px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; }
+  .progress-bar{ height:8px; border-radius:999px; background:var(--panel-2); overflow:hidden; border:1px solid var(--line); }
+  .progress-fill{ height:100%; background:var(--ok); transition:width .2s ease; }
+
+  .form-link-box{
+    display:flex; align-items:center; gap:10px; background:var(--panel-2); border:1px solid var(--line);
+    border-radius:8px; padding:10px 12px; margin-bottom:20px;
+  }
+  .form-link-box input{ flex:1; background:transparent; border:none; color:var(--text); font-size:12.5px; outline:none; }
+  .form-link-box a.open-form-btn{
+    flex-shrink:0; background:var(--safety); color:#1a1a1a; text-decoration:none; font-weight:800;
+    font-size:12px; padding:7px 12px; border-radius:6px; white-space:nowrap;
+  }
+  .form-link-box a.open-form-btn.disabled{ background:var(--line); color:var(--text-dim); pointer-events:none; }
+
+  .bid-checkbox-row{
+    display:flex; align-items:center; gap:10px; background:var(--panel-2); border:1px solid var(--line);
+    border-radius:8px; padding:12px 14px; margin-bottom:20px; cursor:pointer;
+  }
+  .bid-checkbox-row.checked{ border-color:var(--ok); background:var(--ok-dim); }
+  .bid-checkbox-row input{ width:18px; height:18px; accent-color:var(--ok); cursor:pointer; flex-shrink:0; }
+  .bid-checkbox-row label{ font-size:13px; color:var(--text); cursor:pointer; font-weight:600; }
+  .bid-checkbox-row.checked label{ color:var(--ok); }
+
+  .file-upload-box{
+    background:var(--panel-2); border:1px dashed var(--line); border-radius:8px; padding:12px 14px; margin-bottom:20px;
+  }
+  .file-upload-box.has-file{ border-style:solid; border-color:var(--ok); }
+  .file-current{ display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12.5px; }
+  .file-current .file-name{ color:var(--text); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .file-current-actions{ display:flex; gap:8px; flex-shrink:0; }
+  .file-current-actions a, .file-current-actions button{
+    font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:6px; cursor:pointer; text-decoration:none;
+  }
+  .file-view-link{ background:var(--safety); color:#1a1a1a; border:none; }
+  .file-remove-btn{ background:transparent; border:1px solid var(--danger); color:var(--danger); }
+  .file-input-label{
+    display:inline-block; background:var(--panel); border:1px solid var(--line); color:var(--text-dim);
+    padding:7px 14px; border-radius:6px; font-size:12px; cursor:pointer; font-weight:600;
+  }
+  .file-input-label:hover{ border-color:var(--safety); color:var(--text); }
+  .file-upload-box input[type=file]{ display:none; }
+  .file-hint{ font-size:11px; color:var(--text-dim); margin-top:6px; }
+
+  /* Company cheat sheet */
+  .cheat-row{
+    display:flex; align-items:center; gap:10px; background:var(--panel-2); border:1px solid var(--line);
+    border-radius:8px; padding:9px 12px; margin-bottom:8px;
+  }
+  .cheat-row .cheat-label{ font-size:11px; text-transform:uppercase; letter-spacing:0.03em; color:var(--text-dim); font-weight:700; width:170px; flex-shrink:0; }
+  .cheat-row input{ flex:1; background:transparent; border:none; color:var(--text); font-size:13px; outline:none; }
+  .cheat-copy-btn{
+    flex-shrink:0; background:var(--panel); border:1px solid var(--line); color:var(--text-dim);
+    font-size:11px; font-weight:700; padding:5px 10px; border-radius:6px; cursor:pointer;
+  }
+  .cheat-copy-btn:hover{ border-color:var(--safety); color:var(--text); }
+  .cheat-copy-btn.copied{ border-color:var(--ok); color:var(--ok); }
+  .cheat-note{ font-size:12px; color:var(--text-dim); margin-bottom:16px; line-height:1.5; }
+
+  /* Compact 2-column grid used only for the cheat sheet fields box */
+  #cheatFieldsBox{ display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+  #cheatFieldsBox .cheat-row{
+    flex-direction:column; align-items:stretch; gap:4px; margin-bottom:0; padding:8px 10px;
+  }
+  #cheatFieldsBox .cheat-row .cheat-label{ width:auto; font-size:10px; }
+  #cheatFieldsBox .cheat-row .cheat-field-line{ display:flex; align-items:center; gap:6px; }
+  #cheatFieldsBox .cheat-row input{ font-size:12.5px; }
+  #cheatFieldsBox .cheat-copy-btn{ padding:4px 8px; font-size:10px; }
+  @media (max-width: 640px){
+    #cheatFieldsBox{ grid-template-columns: 1fr; }
+  }
+
+  .estimate-item, .email-log-item{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:9px 12px; margin-bottom:6px;
+  }
+  .estimate-item .est-name{ font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .estimate-item .est-date{ font-size:11px; color:var(--text-dim); flex-shrink:0; margin-left:8px; }
+  .email-log-item .log-text{ font-size:12.5px; }
+  .email-log-item .log-date{ font-size:10.5px; color:var(--text-dim); display:block; margin-top:2px; }
+
+  .section-title{ font-size:11.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-dim); font-weight:700; margin:18px 0 8px; }
+
+  .checklist{ display:flex; flex-direction:column; gap:6px; }
+  .checklist-item{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:9px 12px;
+  }
+  .checklist-item .ci-label{ font-size:13px; }
+  .ci-toggle{ display:flex; gap:4px; }
+  .ci-btn{
+    font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:0.03em;
+    border:1px solid var(--line); background:transparent; color:var(--text-dim);
+    padding:4px 9px; border-radius:5px; cursor:pointer;
+  }
+  .ci-btn.active-have{ background:var(--ok-dim); border-color:var(--ok); color:var(--ok); }
+  .ci-btn.active-missing{ background:var(--danger-dim); border-color:var(--danger); color:var(--danger); }
+  .ci-btn.active-na{ background:var(--panel); border-color:var(--text-dim); color:var(--text-dim); }
+  .ci-remove{ background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:13px; padding:0 4px; }
+  .ci-remove:hover{ color:var(--danger); }
+  .add-item-row{ display:flex; gap:8px; margin-top:8px; }
+  .add-item-row input{ flex:1; background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:7px; padding:8px 10px; font-size:12.5px; }
+  .add-item-row button{ background:var(--panel-2); border:1px dashed var(--line); color:var(--text-dim); border-radius:7px; padding:8px 14px; font-size:12px; cursor:pointer; }
+
+  .external-link-row{ margin-top:20px; padding-top:14px; border-top:1px solid var(--line); font-size:12px; color:var(--text-dim); }
+  .external-link-row a{ color:var(--safety); text-decoration:none; font-weight:700; }
+  .external-link-row a:hover{ text-decoration:underline; }
+
+  .saved-flash{ font-size:11px; color:var(--ok); opacity:0; transition:opacity .3s ease; margin-left:8px; }
+  .saved-flash.show{ opacity:1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <div class="brand-eyebrow">Westbridge Demolition · Client Development</div>
+      <h1>Prequalification <span>Tracker</span></h1>
+    </div>
+    <div class="sync">
+      <span id="liveDot"></span>Live source: Google Sheet<br>
+      Last synced: <b id="lastSynced">—</b> · by <b id="syncedBy" title="Click to change" style="cursor:pointer; text-decoration:underline dotted;">Maria Cuellar</b>
+    </div>
+  </header>
+
+  <div class="stats" id="statsRow"></div>
+
+  <div class="banner" id="banner" style="display:none">
+    <div class="stamp">⚠️</div>
+    <p id="bannerText"></p>
+    <button class="edit-note-btn" id="editNoteBtn">Edit note</button>
+  </div>
+
+  <div class="filters" id="filters">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="submitted">Submitted</button>
+    <button class="filter-btn" data-filter="pending">In progress</button>
+    <button class="filter-btn" data-filter="blocked">Blocked / not started</button>
+    <button class="refresh-btn" id="platformAccessBtn" style="margin-left:auto;">🔑 Platform Access</button>
+    <button class="refresh-btn" id="cheatSheetBtn">📋 Base Cheat Sheet Template</button>
+    <button class="refresh-btn" id="refreshBtn">↻ Refresh now</button>
+  </div>
+
+  <div class="grid" id="grid"><div class="msg">Loading data from Google Sheet…</div></div>
+
+  <footer>
+    Internal reference dashboard — does not replace the Master Data Document.<br>
+    Data is pulled live from the connected Google Sheet and refreshes automatically every 5 minutes.
+  </footer>
+</div>
+
+<div class="overlay" id="noteOverlay">
+  <div class="modal">
+    <h2>Edit alert banner</h2>
+    <div class="field">
+      <label>Show banner</label>
+      <div class="radio-row">
+        <label><input type="radio" name="n-show" value="true"> Show</label>
+        <label><input type="radio" name="n-show" value="false"> Hide</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>Banner text</label>
+      <textarea id="n-text"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="cancelNoteBtn">Cancel</button>
+      <button class="btn primary" id="saveNoteBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Vendor detail panel (checklist + form link, editable in-app) -->
+<div class="overlay" id="detailOverlay">
+  <div class="modal detail-modal">
+    <div class="detail-head">
+      <div>
+        <h2 id="detailName">—</h2>
+        <div class="sub" id="detailSub">—</div>
+      </div>
+      <button class="close-x" id="closeDetailBtn">✕</button>
+    </div>
+
+    <div class="link-apply-box">
+      <div class="link-apply-title">🔗 Link to apply</div>
+      <div class="form-link-box">
+        <input type="text" id="formUrlInput" placeholder="Paste link here to apply">
+        <a href="#" target="_blank" class="open-form-btn disabled" id="openFormBtn">Open form</a>
+      </div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span>Prequalification completeness</span>
+        <span id="progressText">0 / 0</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+
+    <div class="bid-checkbox-row" id="bidCheckboxRow">
+      <input type="checkbox" id="bidCheckbox">
+      <label for="bidCheckbox">Already working on bids together — on the GC's bidding list</label>
+    </div>
+
+    <details class="detail-section" open>
+      <summary>📎 Upload form/PDF to fill</summary>
+      <div class="file-upload-box" id="fileUploadBox">
+        <div class="file-current" id="fileCurrentRow" style="display:none;">
+          <span class="file-name" id="fileNameText"></span>
+          <div class="file-current-actions">
+            <a href="#" target="_blank" class="file-view-link" id="fileViewLink">View file</a>
+            <button class="file-view-link" id="fillPdfBtn" style="display:none; border:none; cursor:pointer;">Fill / Edit</button>
+            <button class="file-remove-btn" id="fileRemoveBtn">Remove</button>
+          </div>
+        </div>
+        <label class="file-input-label" for="fileUploadInput" id="fileUploadLabel">📎 Upload the form/PDF to fill</label>
+        <input type="file" id="fileUploadInput" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*">
+        <div class="file-hint">Stored with the tracker (up to ~4 MB). Anyone who opens this tracker can view it.</div>
+      </div>
+    </details>
+
+    <details class="detail-section">
+      <summary>✅ Required documents<span class="saved-flash" id="savedFlash">Saved ✓</span></summary>
+      <div class="checklist" id="checklistBox"></div>
+      <div class="add-item-row">
+        <input type="text" id="newItemInput" placeholder="Add another required item...">
+        <button id="addItemBtn">+ Add</button>
+      </div>
+    </details>
+
+    <details class="detail-section">
+      <summary>📅 Deadlines</summary>
+      <div class="cheat-note" id="deadlineDisplay">No deadline info in the Sheet yet for this vendor.</div>
+    </details>
+
+    <details class="detail-section">
+      <summary>💰 Estimates<span class="saved-flash" id="estimateSavedFlash">Saved ✓</span></summary>
+      <div id="estimatesBox"></div>
+      <div class="file-upload-box" style="margin-top:8px;">
+        <label class="file-input-label" for="estimateUploadInput">📎 Upload an estimate we sent</label>
+        <input type="file" id="estimateUploadInput" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*">
+        <div class="file-hint">Each upload is added to the list below with today's date — keep a record of every estimate sent to this GC.</div>
+      </div>
+    </details>
+
+    <details class="detail-section">
+      <summary>✉️ Email correspondence log</summary>
+      <div id="emailLogBox"></div>
+      <div class="add-item-row">
+        <input type="text" id="newEmailLogInput" placeholder="e.g. Replied confirming receipt — john@stephenson.com, 08/14/2026">
+        <button id="addEmailLogBtn">+ Add entry</button>
+      </div>
+    </details>
+
+    <details class="detail-section">
+      <summary>📝 Notes</summary>
+      <div class="field" style="margin-bottom:0;">
+        <textarea id="detailNotes" placeholder="Internal notes about this vendor's prequalification progress..."></textarea>
+      </div>
+    </details>
+
+    <div class="external-link-row" id="externalLinkRow"></div>
+    <div class="external-link-row" style="border-top:none; padding-top:0; margin-top:6px;">
+      <a href="#" id="openCheatFromDetail">📋 Open Cheat Sheet for this vendor →</a>
+    </div>
+  </div>
+</div>
+
+<!-- Company cheat sheet: reusable answers for GC prequal forms -->
+<div class="overlay" id="cheatOverlay">
+  <div class="modal detail-modal" style="max-width:820px;">
+    <div class="detail-head">
+      <div>
+        <h2 id="cheatModalTitle">Cheat Sheet</h2>
+        <div class="sub" id="cheatModalSub">—</div>
+      </div>
+      <button class="close-x" id="closeCheatBtn">✕</button>
+    </div>
+    <p class="cheat-note" id="cheatModalNote">Click "Copy" next to any field to copy it to your clipboard, then paste it into the GC's website.</p>
+    <div id="cheatFieldsBox"></div>
+    <div class="add-item-row">
+      <input type="text" id="newCheatFieldInput" placeholder="Add another field (e.g. Portal Username)...">
+      <button id="addCheatFieldBtn">+ Add</button>
+    </div>
+    <div class="modal-actions" style="justify-content:flex-start; margin-top:16px;">
+      <button class="btn primary" id="downloadCheatBtn">⬇ Download as text file</button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF field filler -->
+<div class="overlay" id="pdfFillOverlay">
+  <div class="modal detail-modal">
+    <div class="detail-head">
+      <div>
+        <h2>Fill PDF Form</h2>
+        <div class="sub" id="pdfFillSub">—</div>
+      </div>
+      <button class="close-x" id="closePdfFillBtn">✕</button>
+    </div>
+    <div id="pdfFillStatus" class="cheat-note">Reading PDF fields…</div>
+    <div id="pdfFillFieldsBox"></div>
+    <div class="modal-actions">
+      <button class="btn" id="cancelPdfFillBtn">Cancel</button>
+      <button class="btn primary" id="savePdfFillBtn" style="display:none;">Save filled PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- Excel editor -->
+<div class="overlay" id="excelFillOverlay">
+  <div class="modal detail-modal" style="max-width:760px;">
+    <div class="detail-head">
+      <div>
+        <h2>Edit Excel File</h2>
+        <div class="sub" id="excelFillSub">—</div>
+      </div>
+      <button class="close-x" id="closeExcelBtn">✕</button>
+    </div>
+    <p class="cheat-note" id="excelStatus">Reading spreadsheet…</p>
+    <div style="overflow:auto; max-height:50vh; border:1px solid var(--line); border-radius:8px;">
+      <table id="excelTable" style="border-collapse:collapse; width:100%; font-size:12.5px;"></table>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="cancelExcelBtn">Cancel</button>
+      <button class="btn primary" id="saveExcelBtn" style="display:none;">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Word viewer (read-only; editing happens in Word/Google Docs) -->
+<div class="overlay" id="wordViewOverlay">
+  <div class="modal detail-modal" style="max-width:700px;">
+    <div class="detail-head">
+      <div>
+        <h2>Word Document</h2>
+        <div class="sub" id="wordViewSub">—</div>
+      </div>
+      <button class="close-x" id="closeWordBtn">✕</button>
+    </div>
+    <p class="cheat-note" id="wordStatus">Reading document…</p>
+    <div id="wordContentBox" style="max-height:50vh; overflow:auto; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:16px; font-size:13px; line-height:1.6;"></div>
+    <p class="cheat-note" style="margin-top:14px; margin-bottom:0;">This is a read-only preview. To make changes: download the file (View file), edit it in Word or Google Docs, then upload the new version here.</p>
+  </div>
+</div>
+
+<!-- Bidding platform access (usernames/links only — never store real passwords here) -->
+<div class="overlay" id="platformOverlay">
+  <div class="modal detail-modal">
+    <div class="detail-head">
+      <div>
+        <h2>Bidding Platform Access</h2>
+        <div class="sub">Login links and usernames for the platforms GCs use to send invitations</div>
+      </div>
+      <button class="close-x" id="closePlatformBtn">✕</button>
+    </div>
+    <p class="cheat-note" style="color:var(--warn);">⚠ Passwords are stored here at your request, hidden by default (click "Show" to reveal). Remember: anyone who has the tracker's link can open this panel — there's no login on the tracker itself. Only share this link with people who should have this access.</p>
+    <div id="platformFieldsBox"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script>
+/* Published-to-web CSV link (File → Share → Publish to web → CSV) */
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBM3CR9_fQd0cmbYr4hsrPwfHr6MOFYCG5dfban9hK0NJiRg4x_OVFlQxwp96kdro4A8CfFzD3KD1G/pub?gid=0&single=true&output=csv";
+/* Editable Sheet (used only to build "jump to this row" links, not for fetching data) */
+const EDIT_SHEET_ID = "1ZIWG-p7rELIvm8JlOYlAUI-H90oQ-4pdzv9F8QpO0Q0";
+const EDIT_GID = "0";
+
+/* ---------- Real shared storage (backed by your Google Sheet via Apps Script) ----------
+   PASTE your deployed Web App URL below (see Tracker-Storage-Backend.gs + its setup guide).
+   Until you paste a real URL here, saving will silently fail and nothing will persist. */
+const REMOTE_STORAGE_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+
+const storage = {
+  async get(key, _shared){
+    if (!REMOTE_STORAGE_URL || REMOTE_STORAGE_URL.startsWith('PASTE_')) return null;
+    try {
+      const res = await fetch(REMOTE_STORAGE_URL + '?key=' + encodeURIComponent(key));
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data && data.found) return { key, value: data.value };
+      return null;
+    } catch (e) {
+      console.warn('storage.get failed for', key, e);
+      return null;
+    }
+  },
+  async set(key, value, _shared){
+    if (!REMOTE_STORAGE_URL || REMOTE_STORAGE_URL.startsWith('PASTE_')) return null;
+    try {
+      // text/plain avoids a CORS preflight that Apps Script Web Apps can't answer.
+      await fetch(REMOTE_STORAGE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ key, value })
+      });
+      return { key, value };
+    } catch (e) {
+      console.warn('storage.set failed for', key, e);
+      return null;
+    }
+  }
+};
+
+const NOTE_KEY = 'westbridge-tracker-banner';
+const REFRESH_MS = 5 * 60 * 1000;
+let currentFilter = 'all';
+let data = [];
+let bannerState = { show: true, text: "License CBC1265846 expires 08/31/2026. Renewal in progress (confirmed by Benito 07/31/2026), but it has NOT been confirmed as already renewed. Verify status before submitting any new form that includes the expiration date or the license PDF." };
+
+const statusLabel = { submitted: "Submitted", pending: "In progress", blocked: "Not started" };
+
+function norm(v){ return (v || "").toString().trim(); }
+function toBool(v){
+  const s = norm(v).toLowerCase();
+  if (["true","yes","si","sí","x","1"].includes(s)) return true;
+  if (["false","no","0"].includes(s)) return false;
+  return null;
+}
+function escapeHtml(s){
+  return (s || "").toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function parseFlexDate(str){
+  if (!str) return null;
+  const s = str.trim();
+  // Supports MM/DD/YYYY, M/D/YYYY, YYYY-MM-DD
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return new Date(+m[3], +m[1] - 1, +m[2]);
+  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function daysUntil(dateStr){
+  const d = parseFlexDate(dateStr);
+  if (!d) return null;
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  d.setHours(0,0,0,0);
+  return Math.round((d - today) / (1000 * 60 * 60 * 24));
+}
+
+function deadlineTag(deadlineStr){
+  if (!deadlineStr) return '';
+  const days = daysUntil(deadlineStr);
+  if (days === null) return '';
+  if (days < 0) return `<span class="tag auto">⚠ Deadline passed (${escapeHtml(deadlineStr)})</span>`;
+  if (days === 0) return `<span class="tag auto">🔴 Due TODAY (${escapeHtml(deadlineStr)})</span>`;
+  if (days <= 3) return `<span class="tag auto">🟠 Due in ${days} day${days === 1 ? '' : 's'} (${escapeHtml(deadlineStr)})</span>`;
+  return `<span class="tag auto ok">Due ${escapeHtml(deadlineStr)}</span>`;
+}
+
+function rowsToData(rows){
+  return rows.map((r, i) => ({
+    rowNumber: i + 2, // header is row 1, data starts at row 2
+    name: norm(r.name),
+    sub: norm(r.sub),
+    status: (norm(r.status).toLowerCase() || "blocked"),
+    summary: norm(r.summary),
+    autoLiability: toBool(r.autoliability),
+    blockers: norm(r.blockers) ? norm(r.blockers).split("|").map(s => s.trim()).filter(Boolean) : [],
+    lastUpdated: norm(r.lastupdated),
+    responsible: norm(r.responsible),
+    deadline: norm(r.deadline),
+    dateSubmitted: norm(r.datesubmitted || r['date submitted']),
+    sheetUrl: norm(r.sheeturl || r['sheet url'] || r['sheet_url'] || r.link || r.url || r.tablink || r['tab link'])
+  })).filter(r => r.name);
+}
+
+function renderStats(){
+  const submitted = data.filter(d => d.status === "submitted").length;
+  const pending = data.filter(d => d.status !== "submitted").length;
+  const needsAuto = data.filter(d => d.autoLiability === true).length;
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat ok"><div class="num">${submitted} / ${data.length}</div><div class="lbl">Submitted</div></div>
+    <div class="stat warn"><div class="num">${pending} / ${data.length}</div><div class="lbl">Pending submission</div></div>
+    <div class="stat danger"><div class="num">${needsAuto} / ${data.length}</div><div class="lbl">Require Auto Liability</div></div>
+    <div class="stat danger"><div class="num" id="daysLeft">—</div><div class="lbl">Until license expiration</div></div>
+  `;
+}
+
+function renderCards(filter){
+  currentFilter = filter;
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  const filtered = data.filter(d => filter === 'all' || d.status === filter);
+  if (!filtered.length){
+    grid.innerHTML = '<div class="msg">No entries for this filter.</div>';
+    return;
+  }
+  filtered.forEach(d => {
+    const card = document.createElement('div');
+    card.className = `card status-${d.status}`;
+
+    let autoTag = '';
+    if (d.autoLiability === true) autoTag = `<span class="tag auto">Requires Auto Liability — not covered</span>`;
+    if (d.autoLiability === false) autoTag = `<span class="tag auto ok">Auto Liability not required</span>`;
+
+    const blockersHtml = d.blockers.length
+      ? `<div class="blockers"><div class="blockers-title">Needed before this can be submitted</div><ul>${d.blockers.map(b => `<li>${escapeHtml(b)}</li>`).join('')}</ul></div>`
+      : `<div class="blockers none"><ul><li>✅ No active blockers at this step</li></ul></div>`;
+
+    card.innerHTML = `
+      <span class="edit-hint">${d.status === 'submitted' ? 'View checklist →' : 'Needs update — view checklist →'}</span>
+      <div class="card-top">
+        <div>
+          <p class="gc-name">${escapeHtml(d.name)}</p>
+          <p class="gc-sub">${escapeHtml(d.sub)}</p>
+        </div>
+        <span class="badge ${d.status}">${statusLabel[d.status] || d.status}</span>
+      </div>
+      <div class="card-body">${escapeHtml(d.summary)}</div>
+      <div class="tag-row" id="tagrow-${slugify(d.name)}">${autoTag}${deadlineTag(d.deadline)}</div>
+      <div class="meta-row">
+        ${d.responsible ? `<span>Owner: <b>${escapeHtml(d.responsible)}</b></span>` : ''}
+        ${d.lastUpdated ? `<span>Updated: <b>${escapeHtml(d.lastUpdated)}</b></span>` : ''}
+        ${d.deadline ? `<span>GC deadline: <b>${escapeHtml(d.deadline)}</b></span>` : ''}
+        ${d.dateSubmitted ? `<span>We submitted: <b>${escapeHtml(d.dateSubmitted)}</b></span>` : ''}
+      </div>
+      ${blockersHtml}
+    `;
+    card.title = 'Click to view and edit this vendor\'s prequalification checklist';
+    card.addEventListener('click', () => openVendorDetail(d));
+    grid.appendChild(card);
+
+    // Async: check if this vendor is already marked as on the bidding list, and flag it visually.
+    loadVendorDetail(d.name).then(detail => {
+      if (detail.onBiddingList){
+        const tagRow = document.getElementById(`tagrow-${slugify(d.name)}`);
+        if (tagRow) tagRow.insertAdjacentHTML('beforeend', `<span class="tag auto ok">✓ On bidding list</span>`);
+      }
+    }).catch(() => {});
+  });
+}
+
+function setDot(state){ document.getElementById('liveDot').className = state; }
+
+const ATTEMPT_TIMEOUT_MS = 6000;
+
+async function fetchWithTimeout(url, ms){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { cache: 'no-store', signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchCsvText(){
+  const bustedUrl = CSV_URL + (CSV_URL.includes('?') ? '&' : '?') + 'cachebust=' + Date.now();
+  const attempts = [
+    { label: 'direct', url: bustedUrl },
+    { label: 'allorigins proxy', url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(bustedUrl) },
+    { label: 'codetabs proxy', url: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(bustedUrl) },
+    { label: 'corsproxy.io', url: 'https://corsproxy.io/?url=' + encodeURIComponent(bustedUrl) }
+  ];
+
+  const gridMsg = document.getElementById('grid');
+  if (gridMsg && gridMsg.querySelector('.msg')) {
+    gridMsg.querySelector('.msg').textContent = 'Loading data from Google Sheet… (trying all connections at once)';
+  }
+
+  // Fire all attempts in parallel and use whichever succeeds first — much faster
+  // than trying them one at a time when the earlier ones are slow to fail.
+  const racers = attempts.map(attempt => (async () => {
+    const res = await fetchWithTimeout(attempt.url, ATTEMPT_TIMEOUT_MS);
+    if (!res.ok) throw new Error(attempt.label + ': HTTP ' + res.status);
+    const text = await res.text();
+    if (!text || !text.trim()) throw new Error(attempt.label + ': empty response');
+    if (text.trim().startsWith('<')) throw new Error(attempt.label + ': got HTML instead of CSV');
+    console.info('Loaded via: ' + attempt.label);
+    return text;
+  })());
+
+  try {
+    if (typeof Promise.any === 'function'){
+      return await Promise.any(racers);
+    }
+    // Fallback for older browsers without Promise.any
+    return await new Promise((resolve, reject) => {
+      let failures = 0;
+      racers.forEach(p => p.then(resolve).catch(() => { failures++; if (failures === racers.length) reject(new Error('All fetch attempts failed')); }));
+    });
+  } catch (err) {
+    console.warn('All fetch attempts failed:', err);
+    throw new Error('All fetch attempts failed');
+  }
+}
+
+async function loadData(){
+  try {
+    setDot('');
+    const text = await fetchCsvText();
+    const parsed = Papa.parse(text, { header: true, skipEmptyLines: true, transformHeader: h => h.trim().toLowerCase() });
+    console.info('DEBUG detected column headers:', parsed.meta && parsed.meta.fields);
+    data = rowsToData(parsed.data);
+    console.info('DEBUG vendor -> link being used:', data.map(d => ({ name: d.name, sheetUrl: d.sheetUrl || '(none — will fall back to Overview row)' })));
+    renderStats();
+    renderCards(currentFilter);
+    document.getElementById('lastSynced').textContent = new Date().toLocaleString();
+  } catch (err) {
+    console.error('Failed to load live data:', err);
+    setDot('err');
+    if (!data.length){
+      document.getElementById('grid').innerHTML = `<div class="msg">
+        Could not load data from the Google Sheet.<br>
+        Check that: the sheet is shared as "Anyone with the link" (viewer), and the first row has headers
+        <code>name, sub, status, summary, autoliability, blockers</code>.
+      </div>`;
+    }
+  }
+}
+
+const SYNCED_BY_KEY = 'westbridge-tracker-syncedby';
+async function loadSyncedBy(){
+  try {
+    const res = await storage.get(SYNCED_BY_KEY, true);
+    if (res && res.value) document.getElementById('syncedBy').textContent = res.value;
+  } catch (e) { /* keep default */ }
+}
+document.getElementById('syncedBy').addEventListener('click', async () => {
+  const current = document.getElementById('syncedBy').textContent;
+  const name = prompt('Name of the person syncing this update:', current);
+  if (name && name.trim()){
+    document.getElementById('syncedBy').textContent = name.trim();
+    try { await storage.set(SYNCED_BY_KEY, name.trim(), true); } catch(e){}
+  }
+});
+
+async function loadBanner(){
+  try {
+    const res = await storage.get(NOTE_KEY, true);
+    if (res) bannerState = JSON.parse(res.value);
+  } catch (e) { /* keep default */ }
+  document.getElementById('banner').style.display = bannerState.show ? 'flex' : 'none';
+  document.getElementById('bannerText').innerHTML = escapeHtml(bannerState.text);
+}
+async function saveBanner(){
+  try { await storage.set(NOTE_KEY, JSON.stringify(bannerState), true); }
+  catch (e) { alert('Could not save banner note.'); }
+}
+
+/* ---------- Cheat sheets: one base template + one customizable sheet per vendor ---------- */
+const CHEAT_TEMPLATE_KEY = 'westbridge-cheatsheet-template';
+function defaultCheatSheet(){
+  return [
+    { id: 'legalname', label: 'Legal Business Name', value: 'By Other Construction, LLC' },
+    { id: 'dba', label: 'DBA / Trade Name', value: 'Westbridge Demolition' },
+    { id: 'license', label: 'Contractor License #', value: 'CBC1265846' },
+    { id: 'licenseexp', label: 'License Expiration', value: '08/31/2026' },
+    { id: 'ein', label: 'Federal Tax ID (EIN)', value: '' },
+    { id: 'address', label: 'Business Address', value: '' },
+    { id: 'phone', label: 'Business Phone', value: '' },
+    { id: 'email', label: 'Business Email', value: '' },
+    { id: 'yearsinbiz', label: 'Years in Business', value: '' },
+    { id: 'glcarrier', label: 'General Liability Carrier', value: '' },
+    { id: 'glpolicy', label: 'General Liability Policy #', value: '' },
+    { id: 'autocarrier', label: 'Auto Liability Carrier', value: '' },
+    { id: 'wccarrier', label: 'Workers Comp Carrier', value: '' },
+    { id: 'bonding', label: 'Bonding Capacity', value: '' },
+    { id: 'contact', label: 'Primary Contact', value: 'Maria Cuellar — Client Development Manager' },
+  ];
+}
+
+function cheatSheetVendorKey(vendorName){
+  return 'vendor-cheatsheet:' + (vendorName || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+async function loadCheatTemplate(){
+  try {
+    const res = await storage.get(CHEAT_TEMPLATE_KEY, true);
+    if (res && res.value) return JSON.parse(res.value);
+  } catch (e) { /* none saved yet */ }
+  return defaultCheatSheet();
+}
+async function saveCheatTemplate(){
+  try { await storage.set(CHEAT_TEMPLATE_KEY, JSON.stringify(cheatSheetData), true); }
+  catch (e) { console.error('Could not save template', e); }
+}
+
+async function loadVendorCheatSheet(vendorName){
+  const key = cheatSheetVendorKey(vendorName);
+  try {
+    const res = await storage.get(key, true);
+    if (res && res.value) return JSON.parse(res.value);
+  } catch (e) { /* none saved yet for this vendor */ }
+  // First time opening this vendor's sheet: start from the current base template.
+  const fromTemplate = await loadCheatTemplate();
+  return fromTemplate.map(f => ({ ...f }));
+}
+async function saveVendorCheatSheet(vendorName){
+  const key = cheatSheetVendorKey(vendorName);
+  try { await storage.set(key, JSON.stringify(cheatSheetData), true); }
+  catch (e) { console.error('Could not save vendor cheat sheet', e); }
+}
+
+let cheatSheetData = null;
+let cheatSheetMode = 'template'; // 'template' or 'vendor'
+let cheatSheetVendorName = null;
+
+function saveCheatSheetActive(){
+  if (cheatSheetMode === 'vendor') saveVendorCheatSheet(cheatSheetVendorName);
+  else saveCheatTemplate();
+}
+
+function renderCheatSheet(){
+  const box = document.getElementById('cheatFieldsBox');
+  box.innerHTML = '';
+  cheatSheetData.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'cheat-row';
+    row.innerHTML = `
+      <span class="cheat-label">${escapeHtml(item.label)}</span>
+      <div class="cheat-field-line">
+        <input type="text" value="${escapeHtml(item.value)}" placeholder="Not filled in yet">
+        <button class="cheat-copy-btn">Copy</button>
+        <button class="ci-remove" title="Remove field">✕</button>
+      </div>
+    `;
+    const input = row.querySelector('input');
+    const copyBtn = row.querySelector('.cheat-copy-btn');
+    const removeBtn = row.querySelector('.ci-remove');
+    let saveT = null;
+    input.addEventListener('input', () => {
+      item.value = input.value;
+      clearTimeout(saveT);
+      saveT = setTimeout(saveCheatSheetActive, 400);
+    });
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(input.value);
+        copyBtn.textContent = 'Copied ✓';
+        copyBtn.classList.add('copied');
+        setTimeout(() => { copyBtn.textContent = 'Copy'; copyBtn.classList.remove('copied'); }, 1200);
+      } catch (e) {
+        input.select();
+        alert('Could not copy automatically — text is selected, press Cmd+C.');
+      }
+    });
+    removeBtn.addEventListener('click', () => {
+      cheatSheetData = cheatSheetData.filter(f => f !== item);
+      renderCheatSheet();
+      saveCheatSheetActive();
+    });
+    box.appendChild(row);
+  });
+}
+
+async function openCheatSheet(mode, vendorName){
+  cheatSheetMode = mode;
+  cheatSheetVendorName = vendorName || null;
+
+  if (mode === 'vendor'){
+    cheatSheetData = await loadVendorCheatSheet(vendorName);
+    document.getElementById('cheatModalTitle').textContent = `Cheat Sheet — ${vendorName}`;
+    document.getElementById('cheatModalSub').textContent = 'Specific to this vendor — starts from the base template, then customize as needed';
+    document.getElementById('cheatModalNote').textContent = 'Changes here only affect this vendor. Click "Copy" next to any field to paste it into this GC\'s form.';
+  } else {
+    cheatSheetData = await loadCheatTemplate();
+    document.getElementById('cheatModalTitle').textContent = 'Base Cheat Sheet Template';
+    document.getElementById('cheatModalSub').textContent = 'Used to prefill a new cheat sheet the first time you open one for a vendor';
+    document.getElementById('cheatModalNote').textContent = 'Editing this template does NOT change cheat sheets you\'ve already customized for existing vendors — only new ones.';
+  }
+  renderCheatSheet();
+  document.getElementById('cheatOverlay').classList.add('open');
+}
+
+document.getElementById('addCheatFieldBtn').addEventListener('click', () => {
+  const input = document.getElementById('newCheatFieldInput');
+  const label = input.value.trim();
+  if (!label) return;
+  cheatSheetData.push({ id: 'custom-' + Date.now(), label, value: '' });
+  input.value = '';
+  renderCheatSheet();
+  saveCheatSheetActive();
+});
+document.getElementById('newCheatFieldInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('addCheatFieldBtn').click();
+});
+
+document.getElementById('downloadCheatBtn').addEventListener('click', () => {
+  const title = cheatSheetMode === 'vendor' ? `Cheat Sheet — ${cheatSheetVendorName}` : 'Base Cheat Sheet Template';
+  const lines = [title, '='.repeat(title.length), ''];
+  cheatSheetData.forEach(item => {
+    lines.push(`${item.label}: ${item.value || '(not filled in)'}`);
+  });
+  const text = lines.join('\n');
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const safeName = (cheatSheetMode === 'vendor' ? cheatSheetVendorName : 'base-template')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cheat-sheet-${safeName}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('openCheatFromDetail').addEventListener('click', (e) => {
+  e.preventDefault();
+  openCheatSheet('vendor', currentVendor.name);
+});
+document.getElementById('cheatSheetBtn').addEventListener('click', () => {
+  openCheatSheet('template', null);
+});
+document.getElementById('closeCheatBtn').addEventListener('click', () => {
+  document.getElementById('cheatOverlay').classList.remove('open');
+});
+document.getElementById('cheatOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'cheatOverlay') document.getElementById('cheatOverlay').classList.remove('open');
+});
+
+/* ---------- Bidding platform access (links + usernames only, never passwords) ---------- */
+const PLATFORM_ACCESS_KEY = 'westbridge-platform-access';
+function defaultPlatforms(){
+  return [
+    { id: 'buildingconnected', label: 'BuildingConnected', loginUrl: 'https://app.buildingconnected.com/login', username: '', password: '', note: '' },
+    { id: 'procore', label: 'Procore', loginUrl: 'https://login.procore.com/', username: '', password: '', note: '' },
+    { id: 'isqft', label: 'iSqFt / ConstructConnect', loginUrl: 'https://www.isqft.com/login', username: '', password: '', note: '' },
+  ];
+}
+let platformData = null;
+
+async function loadPlatformAccess(){
+  try {
+    const res = await storage.get(PLATFORM_ACCESS_KEY, true);
+    if (res && res.value) return JSON.parse(res.value);
+  } catch (e) { /* none saved yet */ }
+  return defaultPlatforms();
+}
+async function savePlatformAccess(){
+  try { await storage.set(PLATFORM_ACCESS_KEY, JSON.stringify(platformData), true); }
+  catch (e) { console.error('Could not save platform access', e); }
+}
+
+function renderPlatformAccess(){
+  const box = document.getElementById('platformFieldsBox');
+  box.innerHTML = '';
+  platformData.forEach(p => {
+    const wrap = document.createElement('div');
+    wrap.style.marginBottom = '18px';
+    wrap.innerHTML = `
+      <div class="section-title" style="margin-top:0;">${escapeHtml(p.label)}</div>
+      <div class="cheat-row">
+        <span class="cheat-label">Login link</span>
+        <input type="text" data-field="loginUrl" value="${escapeHtml(p.loginUrl)}" placeholder="https://...">
+        <a href="${escapeHtml(p.loginUrl) || '#'}" target="_blank" class="cheat-copy-btn" style="text-decoration:none; text-align:center;">Open →</a>
+      </div>
+      <div class="cheat-row">
+        <span class="cheat-label">Username / email</span>
+        <input type="text" data-field="username" value="${escapeHtml(p.username)}" placeholder="e.g. maria@wbdfl.com">
+        <button class="cheat-copy-btn">Copy</button>
+      </div>
+      <div class="cheat-row">
+        <span class="cheat-label">Password</span>
+        <input type="password" data-field="password" value="${escapeHtml(p.password)}" placeholder="Password">
+        <button class="cheat-copy-btn pw-toggle" style="width:44px;">Show</button>
+        <button class="cheat-copy-btn pw-copy">Copy</button>
+      </div>
+      <div class="cheat-row">
+        <span class="cheat-label">Note</span>
+        <input type="text" data-field="note" value="${escapeHtml(p.note)}" placeholder="Optional note">
+        <button class="cheat-copy-btn">Copy</button>
+      </div>
+    `;
+    const pwInput = wrap.querySelector('input[data-field="password"]');
+    wrap.querySelector('.pw-toggle').addEventListener('click', (e) => {
+      const btn = e.currentTarget;
+      const isHidden = pwInput.type === 'password';
+      pwInput.type = isHidden ? 'text' : 'password';
+      btn.textContent = isHidden ? 'Hide' : 'Show';
+    });
+    wrap.querySelector('.pw-copy').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(pwInput.value);
+        const btn = wrap.querySelector('.pw-copy');
+        btn.textContent = 'Copied ✓';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 1200);
+      } catch (e) {
+        alert('Could not copy automatically.');
+      }
+    });
+    wrap.querySelectorAll('input').forEach(input => {
+      let saveT = null;
+      input.addEventListener('input', () => {
+        p[input.dataset.field] = input.value;
+        if (input.dataset.field === 'loginUrl'){
+          const openLink = wrap.querySelector('a.cheat-copy-btn');
+          openLink.href = input.value || '#';
+        }
+        clearTimeout(saveT);
+        saveT = setTimeout(savePlatformAccess, 400);
+      });
+    });
+    wrap.querySelectorAll('.cheat-row').forEach(row => {
+      if (row.querySelector('input[type="password"]')) return; // handled separately above
+      const btn = row.querySelector('button.cheat-copy-btn');
+      if (!btn) return;
+      const input = row.querySelector('input');
+      btn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(input.value);
+          btn.textContent = 'Copied ✓';
+          setTimeout(() => { btn.textContent = 'Copy'; }, 1200);
+        } catch (e) {
+          input.select();
+          alert('Could not copy automatically — text is selected, press Cmd+C.');
+        }
+      });
+    });
+    box.appendChild(wrap);
+  });
+}
+
+document.getElementById('platformAccessBtn').addEventListener('click', async () => {
+  platformData = await loadPlatformAccess();
+  renderPlatformAccess();
+  document.getElementById('platformOverlay').classList.add('open');
+});
+document.getElementById('closePlatformBtn').addEventListener('click', () => {
+  document.getElementById('platformOverlay').classList.remove('open');
+});
+document.getElementById('platformOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'platformOverlay') document.getElementById('platformOverlay').classList.remove('open');
+});
+
+/* ---------- Vendor detail panel (in-app editable, separate from the Sheet) ---------- */
+function slugify(name){
+  return 'vendor-detail:' + (name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+function defaultChecklist(){
+  return [
+    { id: 'coi', label: 'Certificate of Insurance (General Liability)', status: 'missing' },
+    { id: 'auto', label: 'Auto Liability Certificate', status: 'missing' },
+    { id: 'wc', label: 'Workers\' Compensation Certificate', status: 'missing' },
+    { id: 'w9', label: 'W-9 Form', status: 'missing' },
+    { id: 'subagreement', label: 'Signed Subcontractor Agreement', status: 'missing' },
+    { id: 'license', label: 'Contractor License Copy', status: 'missing' },
+    { id: 'safety', label: 'Safety Program / EMR Documentation', status: 'missing' },
+  ];
+}
+
+let currentVendor = null;   // the row from `data` currently open
+let currentDetail = null;   // the stored detail object for that vendor
+let saveTimer = null;
+
+async function loadVendorDetail(vendorName){
+  const key = slugify(vendorName);
+  try {
+    const res = await storage.get(key, true);
+    if (res && res.value) {
+      const parsed = JSON.parse(res.value);
+      return {
+        formUrl: parsed.formUrl || '',
+        checklist: parsed.checklist || defaultChecklist(),
+        notes: parsed.notes || '',
+        onBiddingList: !!parsed.onBiddingList,
+        uploadedFile: parsed.uploadedFile || null,
+        estimates: parsed.estimates || [],
+        emailLog: parsed.emailLog || []
+      };
+    }
+  } catch (e) { /* none saved yet */ }
+  return { formUrl: '', checklist: defaultChecklist(), notes: '', onBiddingList: false, uploadedFile: null, estimates: [], emailLog: [] };
+}
+
+async function saveVendorDetail(vendorName, detail){
+  const key = slugify(vendorName);
+  try {
+    await storage.set(key, JSON.stringify(detail), true);
+    flashSaved();
+  } catch (e) {
+    console.error('Could not save vendor detail', e);
+  }
+}
+
+function flashSaved(){
+  const el = document.getElementById('savedFlash');
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 1200);
+}
+
+function queueSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    if (currentVendor && currentDetail) saveVendorDetail(currentVendor.name, currentDetail);
+  }, 400);
+}
+
+function renderChecklist(){
+  const box = document.getElementById('checklistBox');
+  box.innerHTML = '';
+  currentDetail.checklist.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'checklist-item';
+    row.innerHTML = `
+      <span class="ci-label">${escapeHtml(item.label)}</span>
+      <div class="ci-toggle">
+        <button class="ci-btn ${item.status === 'have' ? 'active-have' : ''}" data-status="have">Have</button>
+        <button class="ci-btn ${item.status === 'missing' ? 'active-missing' : ''}" data-status="missing">Missing</button>
+        <button class="ci-btn ${item.status === 'na' ? 'active-na' : ''}" data-status="na">N/A</button>
+        <button class="ci-remove" title="Remove item">✕</button>
+      </div>
+    `;
+    row.querySelectorAll('.ci-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        item.status = btn.dataset.status;
+        renderChecklist();
+        renderProgress();
+        queueSave();
+      });
+    });
+    row.querySelector('.ci-remove').addEventListener('click', () => {
+      currentDetail.checklist = currentDetail.checklist.filter(i => i !== item);
+      renderChecklist();
+      renderProgress();
+      queueSave();
+    });
+    box.appendChild(row);
+  });
+}
+
+function renderProgress(){
+  const relevant = currentDetail.checklist.filter(i => i.status !== 'na');
+  const have = relevant.filter(i => i.status === 'have').length;
+  const total = relevant.length;
+  const pct = total ? Math.round((have / total) * 100) : 100;
+  document.getElementById('progressText').textContent = `${have} / ${total}`;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressFill').style.background = pct === 100 ? 'var(--ok)' : (pct >= 50 ? 'var(--warn)' : 'var(--danger)');
+}
+
+async function openVendorDetail(vendor){
+  currentVendor = vendor;
+  currentDetail = await loadVendorDetail(vendor.name);
+  document.getElementById('detailName').textContent = vendor.name;
+  document.getElementById('detailSub').textContent = vendor.sub || '';
+  document.getElementById('formUrlInput').value = currentDetail.formUrl || '';
+  updateOpenFormBtn();
+  document.getElementById('detailNotes').value = currentDetail.notes || '';
+  renderChecklist();
+  renderProgress();
+  renderBidCheckbox();
+  renderUploadedFile();
+  renderDeadlineDisplay(vendor);
+  renderEstimates();
+  renderEmailLog();
+
+  const extRow = document.getElementById('externalLinkRow');
+  extRow.innerHTML = vendor.sheetUrl
+    ? `Full record for this vendor: <a href="${vendor.sheetUrl}" target="_blank">Open Google Sheet →</a>`
+    : `No Google Sheet linked for this vendor yet.`;
+
+  document.getElementById('detailOverlay').classList.add('open');
+}
+
+function renderDeadlineDisplay(vendor){
+  const box = document.getElementById('deadlineDisplay');
+  if (!vendor.deadline && !vendor.dateSubmitted){
+    box.innerHTML = 'No deadline info in the Sheet yet. Add <code>deadline</code> and <code>datesubmitted</code> columns to the Overview tab to track this (and to power the email alerts).';
+    return;
+  }
+  const days = vendor.deadline ? daysUntil(vendor.deadline) : null;
+  let urgency = '';
+  if (days !== null){
+    if (days < 0) urgency = ' — ⚠ deadline has passed';
+    else if (days === 0) urgency = ' — 🔴 due today';
+    else if (days <= 3) urgency = ` — 🟠 due in ${days} day${days === 1 ? '' : 's'}`;
+    else urgency = ` — due in ${days} days`;
+  }
+  box.innerHTML = `
+    ${vendor.deadline ? `GC's submission deadline: <b style="color:var(--text)">${escapeHtml(vendor.deadline)}</b>${urgency}<br>` : ''}
+    ${vendor.dateSubmitted ? `We submitted on: <b style="color:var(--text)">${escapeHtml(vendor.dateSubmitted)}</b>` : 'We haven\'t logged a submission date yet.'}
+  `;
+}
+
+function renderBidCheckbox(){
+  const row = document.getElementById('bidCheckboxRow');
+  const box = document.getElementById('bidCheckbox');
+  box.checked = !!currentDetail.onBiddingList;
+  row.classList.toggle('checked', box.checked);
+}
+
+function fileKindFromDataUrl(dataUrl){
+  if (dataUrl.startsWith('data:application/pdf')) return 'pdf';
+  if (dataUrl.includes('spreadsheetml') || dataUrl.startsWith('data:application/vnd.ms-excel')) return 'excel';
+  if (dataUrl.includes('wordprocessingml') || dataUrl.startsWith('data:application/msword')) return 'word';
+  return 'other';
+}
+
+function renderUploadedFile(){
+  const wrap = document.getElementById('fileUploadBox');
+  const row = document.getElementById('fileCurrentRow');
+  const label = document.getElementById('fileUploadLabel');
+  const fillBtn = document.getElementById('fillPdfBtn');
+  if (currentDetail.uploadedFile){
+    wrap.classList.add('has-file');
+    row.style.display = 'flex';
+    label.style.display = 'none';
+    document.getElementById('fileNameText').textContent = currentDetail.uploadedFile.name;
+    document.getElementById('fileViewLink').href = currentDetail.uploadedFile.dataUrl;
+    const kind = fileKindFromDataUrl(currentDetail.uploadedFile.dataUrl);
+    currentDetail.uploadedFile.kind = kind;
+    if (kind === 'pdf'){ fillBtn.style.display = 'inline-block'; fillBtn.textContent = 'Fill PDF'; }
+    else if (kind === 'excel'){ fillBtn.style.display = 'inline-block'; fillBtn.textContent = 'Edit Excel'; }
+    else if (kind === 'word'){ fillBtn.style.display = 'inline-block'; fillBtn.textContent = 'View Word doc'; }
+    else { fillBtn.style.display = 'none'; }
+  } else {
+    wrap.classList.remove('has-file');
+    row.style.display = 'none';
+    label.style.display = 'inline-block';
+  }
+}
+
+function updateOpenFormBtn(){
+  const btn = document.getElementById('openFormBtn');
+  const url = document.getElementById('formUrlInput').value.trim();
+  if (url){
+    btn.href = url;
+    btn.classList.remove('disabled');
+  } else {
+    btn.href = '#';
+    btn.classList.add('disabled');
+  }
+}
+
+document.getElementById('formUrlInput').addEventListener('input', () => {
+  currentDetail.formUrl = document.getElementById('formUrlInput').value.trim();
+  updateOpenFormBtn();
+  queueSave();
+});
+document.getElementById('bidCheckbox').addEventListener('change', () => {
+  currentDetail.onBiddingList = document.getElementById('bidCheckbox').checked;
+  renderBidCheckbox();
+  queueSave();
+});
+const MAX_FILE_BYTES = 4 * 1024 * 1024; // ~4MB, storage values must stay under 5MB
+document.getElementById('fileUploadInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > MAX_FILE_BYTES){
+    alert('That file is too large (max ~4 MB). Try a smaller file or compress the PDF.');
+    e.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    currentDetail.uploadedFile = { name: file.name, dataUrl: reader.result, uploadedAt: new Date().toISOString() };
+    renderUploadedFile();
+    queueSave();
+    e.target.value = '';
+  };
+  reader.onerror = () => alert('Could not read that file. Please try again.');
+  reader.readAsDataURL(file);
+});
+document.getElementById('fileRemoveBtn').addEventListener('click', () => {
+  if (!confirm('Remove the uploaded file for this vendor?')) return;
+  currentDetail.uploadedFile = null;
+  renderUploadedFile();
+  queueSave();
+});
+
+/* ---------- Estimates we've sent to this GC ---------- */
+function renderEstimates(){
+  const box = document.getElementById('estimatesBox');
+  box.innerHTML = '';
+  if (!currentDetail.estimates.length){
+    box.innerHTML = '<div class="cheat-note" style="margin-bottom:8px;">No estimates uploaded yet for this vendor.</div>';
+    return;
+  }
+  currentDetail.estimates.forEach((est, idx) => {
+    const row = document.createElement('div');
+    row.className = 'estimate-item';
+    row.innerHTML = `
+      <span class="est-name">📄 ${escapeHtml(est.name)}</span>
+      <span class="est-date">${escapeHtml(est.uploadedAt)}</span>
+      <div class="file-current-actions">
+        <a href="${est.dataUrl}" target="_blank" class="file-view-link">View</a>
+        <button class="file-remove-btn" data-idx="${idx}">Remove</button>
+      </div>
+    `;
+    row.querySelector('.file-remove-btn').addEventListener('click', () => {
+      if (!confirm('Remove this estimate from the record?')) return;
+      currentDetail.estimates.splice(idx, 1);
+      renderEstimates();
+      queueSave();
+    });
+    box.appendChild(row);
+  });
+}
+
+document.getElementById('estimateUploadInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > MAX_FILE_BYTES){
+    alert('That file is too large (max ~4 MB). Try a smaller file or compress it.');
+    e.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    currentDetail.estimates.push({
+      name: file.name,
+      dataUrl: reader.result,
+      uploadedAt: new Date().toLocaleDateString()
+    });
+    renderEstimates();
+    queueSave();
+    const flash = document.getElementById('estimateSavedFlash');
+    flash.classList.add('show');
+    setTimeout(() => flash.classList.remove('show'), 1200);
+    e.target.value = '';
+  };
+  reader.onerror = () => alert('Could not read that file. Please try again.');
+  reader.readAsDataURL(file);
+});
+
+/* ---------- Email correspondence log ---------- */
+function renderEmailLog(){
+  const box = document.getElementById('emailLogBox');
+  box.innerHTML = '';
+  if (!currentDetail.emailLog.length){
+    box.innerHTML = '<div class="cheat-note" style="margin-bottom:8px;">No email correspondence logged yet.</div>';
+    return;
+  }
+  // Most recent first
+  currentDetail.emailLog.slice().reverse().forEach((entry) => {
+    const realIdx = currentDetail.emailLog.indexOf(entry);
+    const row = document.createElement('div');
+    row.className = 'email-log-item';
+    row.innerHTML = `
+      <div>
+        <span class="log-text">${escapeHtml(entry.text)}</span>
+        <span class="log-date">${escapeHtml(entry.date)}</span>
+      </div>
+      <button class="ci-remove" title="Remove entry">✕</button>
+    `;
+    row.querySelector('.ci-remove').addEventListener('click', () => {
+      currentDetail.emailLog.splice(realIdx, 1);
+      renderEmailLog();
+      queueSave();
+    });
+    box.appendChild(row);
+  });
+}
+
+document.getElementById('addEmailLogBtn').addEventListener('click', () => {
+  const input = document.getElementById('newEmailLogInput');
+  const text = input.value.trim();
+  if (!text) return;
+  currentDetail.emailLog.push({ text, date: new Date().toLocaleString() });
+  input.value = '';
+  renderEmailLog();
+  queueSave();
+});
+document.getElementById('newEmailLogInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('addEmailLogBtn').click();
+});
+
+/* ---------- Fill PDF (only works for PDFs that have real fillable form fields) ---------- */
+function dataUrlToBytes(dataUrl){
+  const base64 = dataUrl.split(',')[1];
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+function bytesToDataUrl(bytes, mime){
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return `data:${mime};base64,${btoa(binary)}`;
+}
+
+let pdfFillCtx = null; // { pdfDoc, form, fields }
+
+document.getElementById('fillPdfBtn').addEventListener('click', () => {
+  const kind = currentDetail.uploadedFile.kind || fileKindFromDataUrl(currentDetail.uploadedFile.dataUrl);
+  if (kind === 'pdf') openPdfFiller();
+  else if (kind === 'excel') openExcelEditor();
+  else if (kind === 'word') openWordViewer();
+});
+
+async function openPdfFiller(){
+  const statusEl = document.getElementById('pdfFillStatus');
+  const box = document.getElementById('pdfFillFieldsBox');
+  const saveBtn = document.getElementById('savePdfFillBtn');
+  box.innerHTML = '';
+  saveBtn.style.display = 'none';
+  statusEl.textContent = 'Reading PDF fields…';
+  document.getElementById('pdfFillSub').textContent = currentDetail.uploadedFile.name;
+  document.getElementById('pdfFillOverlay').classList.add('open');
+
+  if (typeof PDFLib === 'undefined'){
+    statusEl.textContent = 'Could not load the PDF editing library (check your internet connection) — try View file and fill it by hand instead.';
+    return;
+  }
+
+  try {
+    const bytes = dataUrlToBytes(currentDetail.uploadedFile.dataUrl);
+    const pdfDoc = await PDFLib.PDFDocument.load(bytes);
+    const form = pdfDoc.getForm();
+    const fields = form.getFields();
+
+    if (!fields.length){
+      statusEl.textContent = 'This PDF doesn\'t have fillable form fields (it\'s likely a scanned or flat document). Use "View file" to open it, then fill it by hand or in Acrobat/Preview and re-upload here.';
+      pdfFillCtx = null;
+      return;
+    }
+
+    statusEl.textContent = `Found ${fields.length} field${fields.length === 1 ? '' : 's'}. Fill them in below, then save.`;
+    pdfFillCtx = { pdfDoc, form, fields };
+
+    fields.forEach(field => {
+      const name = field.getName();
+      const type = field.constructor.name; // e.g. PDFTextField, PDFCheckBox, PDFDropdown
+      const row = document.createElement('div');
+      row.className = 'cheat-row';
+
+      if (type === 'PDFCheckBox'){
+        const checked = field.isChecked ? field.isChecked() : false;
+        row.innerHTML = `
+          <span class="cheat-label" style="width:auto; flex:1;">${escapeHtml(name)}</span>
+          <input type="checkbox" data-field="${escapeHtml(name)}" ${checked ? 'checked' : ''} style="width:20px;height:20px;accent-color:var(--ok);">
+        `;
+      } else if (type === 'PDFDropdown' || type === 'PDFOptionList'){
+        const options = field.getOptions ? field.getOptions() : [];
+        const current = field.getSelected ? (field.getSelected()[0] || '') : '';
+        row.innerHTML = `
+          <span class="cheat-label">${escapeHtml(name)}</span>
+          <select data-field="${escapeHtml(name)}" style="flex:1;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:6px;">
+            ${options.map(o => `<option value="${escapeHtml(o)}" ${o === current ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('')}
+          </select>
+        `;
+      } else {
+        const current = field.getText ? (field.getText() || '') : '';
+        row.innerHTML = `
+          <span class="cheat-label">${escapeHtml(name)}</span>
+          <input type="text" data-field="${escapeHtml(name)}" value="${escapeHtml(current)}">
+        `;
+      }
+      box.appendChild(row);
+    });
+
+    saveBtn.style.display = 'inline-block';
+  } catch (err) {
+    console.error('PDF fill error:', err);
+    statusEl.textContent = 'Could not read this PDF\'s form fields. It may be corrupted, encrypted, or not a real PDF form. Try "View file" to open it directly instead.';
+    pdfFillCtx = null;
+  }
+}
+
+document.getElementById('savePdfFillBtn').addEventListener('click', async () => {
+  if (!pdfFillCtx) return;
+  const { pdfDoc, form } = pdfFillCtx;
+  const box = document.getElementById('pdfFillFieldsBox');
+
+  try {
+    box.querySelectorAll('[data-field]').forEach(el => {
+      const name = el.dataset.field;
+      let field;
+      try { field = form.getField(name); } catch (e) { return; }
+      if (el.type === 'checkbox'){
+        if (el.checked) field.check(); else field.uncheck();
+      } else if (el.tagName === 'SELECT'){
+        try { field.select(el.value); } catch (e) {}
+      } else {
+        try { field.setText(el.value); } catch (e) {}
+      }
+    });
+
+    const filledBytes = await pdfDoc.save();
+    const dataUrl = bytesToDataUrl(filledBytes, 'application/pdf');
+    currentDetail.uploadedFile = {
+      name: currentDetail.uploadedFile.name.replace(/\.pdf$/i, '') + ' (filled).pdf',
+      dataUrl,
+      uploadedAt: new Date().toISOString()
+    };
+    renderUploadedFile();
+    queueSave();
+    document.getElementById('pdfFillOverlay').classList.remove('open');
+  } catch (err) {
+    console.error('Could not save filled PDF:', err);
+    alert('Could not save the filled PDF. Please try again.');
+  }
+});
+
+document.getElementById('closePdfFillBtn').addEventListener('click', () => {
+  document.getElementById('pdfFillOverlay').classList.remove('open');
+});
+document.getElementById('cancelPdfFillBtn').addEventListener('click', () => {
+  document.getElementById('pdfFillOverlay').classList.remove('open');
+});
+document.getElementById('pdfFillOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'pdfFillOverlay') document.getElementById('pdfFillOverlay').classList.remove('open');
+});
+
+/* ---------- Edit Excel (.xlsx) directly in the browser ---------- */
+let excelCtx = null; // { workbook, sheetName }
+
+async function openExcelEditor(){
+  const statusEl = document.getElementById('excelStatus');
+  const table = document.getElementById('excelTable');
+  const saveBtn = document.getElementById('saveExcelBtn');
+  table.innerHTML = '';
+  saveBtn.style.display = 'none';
+  statusEl.textContent = 'Reading spreadsheet…';
+  document.getElementById('excelFillSub').textContent = currentDetail.uploadedFile.name;
+  document.getElementById('excelFillOverlay').classList.add('open');
+
+  if (typeof XLSX === 'undefined'){
+    statusEl.textContent = 'Could not load the spreadsheet library (check your internet connection) — try View file instead.';
+    return;
+  }
+
+  try {
+    const bytes = dataUrlToBytes(currentDetail.uploadedFile.dataUrl);
+    const workbook = XLSX.read(bytes, { type: 'array' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+    excelCtx = { workbook, sheetName };
+    statusEl.textContent = `Editing sheet "${sheetName}". Click any cell to change it, then save.`;
+
+    rows.forEach((rowArr, rIdx) => {
+      const tr = document.createElement('tr');
+      rowArr.forEach((cell, cIdx) => {
+        const td = document.createElement('td');
+        td.style.border = '1px solid var(--line)';
+        td.style.padding = '0';
+        td.innerHTML = `<input type="text" data-r="${rIdx}" data-c="${cIdx}" value="${escapeHtml(String(cell))}" style="width:100%; min-width:80px; background:var(--panel-2); border:none; color:var(--text); padding:6px 8px; font-size:12.5px;">`;
+        tr.appendChild(td);
+      });
+      table.appendChild(tr);
+    });
+
+    saveBtn.style.display = 'inline-block';
+  } catch (err) {
+    console.error('Excel read error:', err);
+    statusEl.textContent = 'Could not read this spreadsheet. Try "View file" to download and open it directly instead.';
+    excelCtx = null;
+  }
+}
+
+document.getElementById('saveExcelBtn').addEventListener('click', () => {
+  if (!excelCtx) return;
+  try {
+    const table = document.getElementById('excelTable');
+    const maxRow = Math.max(0, ...Array.from(table.querySelectorAll('input')).map(i => +i.dataset.r)) + 1;
+    const maxCol = Math.max(0, ...Array.from(table.querySelectorAll('input')).map(i => +i.dataset.c)) + 1;
+    const aoa = Array.from({ length: maxRow }, () => Array.from({ length: maxCol }, () => ''));
+    table.querySelectorAll('input').forEach(input => {
+      aoa[+input.dataset.r][+input.dataset.c] = input.value;
+    });
+
+    const newSheet = XLSX.utils.aoa_to_sheet(aoa);
+    excelCtx.workbook.Sheets[excelCtx.sheetName] = newSheet;
+    const out = XLSX.write(excelCtx.workbook, { type: 'array', bookType: 'xlsx' });
+    const dataUrl = bytesToDataUrl(new Uint8Array(out), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    currentDetail.uploadedFile = {
+      name: currentDetail.uploadedFile.name.replace(/\.(xlsx|xls)$/i, '') + ' (edited).xlsx',
+      dataUrl,
+      uploadedAt: new Date().toISOString()
+    };
+    renderUploadedFile();
+    queueSave();
+    document.getElementById('excelFillOverlay').classList.remove('open');
+  } catch (err) {
+    console.error('Could not save spreadsheet:', err);
+    alert('Could not save the spreadsheet. Please try again.');
+  }
+});
+document.getElementById('closeExcelBtn').addEventListener('click', () => {
+  document.getElementById('excelFillOverlay').classList.remove('open');
+});
+document.getElementById('cancelExcelBtn').addEventListener('click', () => {
+  document.getElementById('excelFillOverlay').classList.remove('open');
+});
+document.getElementById('excelFillOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'excelFillOverlay') document.getElementById('excelFillOverlay').classList.remove('open');
+});
+
+/* ---------- View Word (.docx) content — read-only preview ---------- */
+async function openWordViewer(){
+  const statusEl = document.getElementById('wordStatus');
+  const box = document.getElementById('wordContentBox');
+  box.innerHTML = '';
+  statusEl.textContent = 'Reading document…';
+  document.getElementById('wordViewSub').textContent = currentDetail.uploadedFile.name;
+  document.getElementById('wordViewOverlay').classList.add('open');
+
+  if (typeof mammoth === 'undefined'){
+    statusEl.textContent = 'Could not load the document preview library (check your internet connection) — use "View file" to download it instead.';
+    return;
+  }
+
+  try {
+    const bytes = dataUrlToBytes(currentDetail.uploadedFile.dataUrl);
+    const result = await mammoth.convertToHtml({ arrayBuffer: bytes.buffer });
+    box.innerHTML = result.value;
+    statusEl.textContent = 'Read-only preview:';
+  } catch (err) {
+    console.error('Word preview error:', err);
+    statusEl.textContent = 'Could not preview this document (it may be an older .doc format). Use "View file" to download it instead.';
+  }
+}
+document.getElementById('closeWordBtn').addEventListener('click', () => {
+  document.getElementById('wordViewOverlay').classList.remove('open');
+});
+document.getElementById('wordViewOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'wordViewOverlay') document.getElementById('wordViewOverlay').classList.remove('open');
+});
+
+document.getElementById('detailNotes').addEventListener('input', () => {
+  currentDetail.notes = document.getElementById('detailNotes').value;
+  queueSave();
+});
+document.getElementById('addItemBtn').addEventListener('click', () => {
+  const input = document.getElementById('newItemInput');
+  const label = input.value.trim();
+  if (!label) return;
+  currentDetail.checklist.push({ id: 'custom-' + Date.now(), label, status: 'missing' });
+  input.value = '';
+  renderChecklist();
+  renderProgress();
+  queueSave();
+});
+document.getElementById('newItemInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('addItemBtn').click();
+});
+document.getElementById('closeDetailBtn').addEventListener('click', () => {
+  document.getElementById('detailOverlay').classList.remove('open');
+});
+document.getElementById('detailOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'detailOverlay') document.getElementById('detailOverlay').classList.remove('open');
+});
+
+document.getElementById('editNoteBtn').addEventListener('click', () => {
+  document.querySelectorAll('input[name=n-show]').forEach(r => r.checked = (r.value === String(bannerState.show)));
+  document.getElementById('n-text').value = bannerState.text;
+  document.getElementById('noteOverlay').classList.add('open');
+});
+document.getElementById('cancelNoteBtn').addEventListener('click', () => {
+  document.getElementById('noteOverlay').classList.remove('open');
+});
+document.getElementById('saveNoteBtn').addEventListener('click', async () => {
+  bannerState.show = document.querySelector('input[name=n-show]:checked').value === 'true';
+  bannerState.text = document.getElementById('n-text').value.trim();
+  await saveBanner();
+  document.getElementById('banner').style.display = bannerState.show ? 'flex' : 'none';
+  document.getElementById('bannerText').innerHTML = escapeHtml(bannerState.text);
+  document.getElementById('noteOverlay').classList.remove('open');
+});
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderCards(btn.dataset.filter);
+  });
+});
+document.getElementById('refreshBtn').addEventListener('click', loadData);
+
+loadBanner();
+loadSyncedBy();
+loadData();
+setInterval(loadData, REFRESH_MS);
+</script>
+</body>
+</html>
