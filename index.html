@@ -167,6 +167,13 @@
     background:var(--safety-dim); border:2px solid var(--safety); border-radius:10px;
     padding:14px 16px; margin: 14px 0 18px;
   }
+
+  .vendor-status-banner{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--danger-dim); border:1px solid var(--danger); border-radius:8px;
+    padding:10px 14px; margin-top:14px; font-size:12.5px; color:var(--text);
+  }
+  .vendor-status-banner.confirmed{ background:var(--ok-dim); border-color:var(--ok); }
   .link-apply-title{ font-size:13px; font-weight:800; color:var(--safety); margin-bottom:8px; }
   .link-apply-box .form-link-box{ margin-bottom:0; background:var(--panel); }
   .app-method-row{ margin-top:10px; }
@@ -327,8 +334,10 @@
   .gm-attachment-btn:hover{ background:var(--safety); color:#1a1a1a; }
   .gm-suggestion{
     background:var(--safety-dim); border:1px solid var(--safety); border-radius:8px;
-    padding:8px 10px; font-size:11.5px; color:var(--text); margin-bottom:4px;
+    padding:8px 10px; font-size:11.5px; color:var(--text); margin-bottom:8px;
   }
+  .gm-howto{ line-height:1.6; }
+  .gm-howto a{ color:#7ab8ff; }
   .gmail-status-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
   .gmail-status-row .gm-connected{ font-size:11px; color:var(--ok); font-weight:700; }
 
@@ -340,6 +349,14 @@
     background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:9px 12px;
   }
   .checklist-item .ci-label{ font-size:13px; }
+  .checklist-item.ci-row-missing{ border-color:var(--danger); background:var(--danger-dim); }
+  .checklist-item.ci-row-have{ border-color:var(--ok); background:var(--ok-dim); }
+  .ci-missing-hint{ font-size:10.5px; color:var(--danger); font-weight:700; margin-left:6px; }
+  .checklist-confirmed{
+    background:var(--ok-dim); border:1px solid var(--ok); border-radius:8px; padding:12px 14px;
+    font-size:12.5px; color:var(--text); line-height:1.6;
+  }
+  .checklist-confirmed a{ color:var(--ok); font-weight:700; margin-left:8px; }
   .ci-toggle{ display:flex; gap:4px; }
   .ci-btn{
     font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:0.03em;
@@ -436,6 +453,11 @@
       <button class="close-x" id="closeDetailBtn">✕</button>
     </div>
 
+    <div class="vendor-status-banner" id="vendorStatusBanner">
+      <span id="vendorStatusText">❓ Not confirmed yet — are we on their bidding list / approved vendor list?</span>
+      <button class="cheat-copy-btn" id="vendorStatusToggle">Mark as confirmed</button>
+    </div>
+
     <div class="link-apply-box">
       <div class="link-apply-title">🔗 Link to apply</div>
       <div class="form-link-box">
@@ -499,9 +521,19 @@
 
     <details class="detail-section">
       <summary>💰 Estimates<span class="saved-flash" id="estimateSavedFlash">Saved ✓</span></summary>
+
+      <div class="section-title" style="margin-top:0;">📥 Received from them (docs/requests to base our estimate on)</div>
+      <div id="estimatesReceivedBox"></div>
+      <div class="file-upload-box" style="margin-top:8px;">
+        <label class="file-input-label" for="estimateReceivedInput">📎 Upload what they sent us</label>
+        <input type="file" id="estimateReceivedInput" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*">
+        <div class="file-hint">Plans, scope, RFQ, or whatever they sent asking us to price the job.</div>
+      </div>
+
+      <div class="section-title">📤 Estimates we're sending them</div>
       <div id="estimatesBox"></div>
       <div class="file-upload-box" style="margin-top:8px;">
-        <label class="file-input-label" for="estimateUploadInput">📎 Upload an estimate we sent</label>
+        <label class="file-input-label" for="estimateUploadInput">📎 Upload the estimate we sent</label>
         <input type="file" id="estimateUploadInput" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*">
         <div class="file-hint">Each upload is added to the list below with today's date — keep a record of every estimate sent to this GC.</div>
       </div>
@@ -1413,12 +1445,13 @@ async function loadVendorDetail(vendorName){
         onBiddingList: !!parsed.onBiddingList,
         uploadedFile: parsed.uploadedFile || null,
         estimates: parsed.estimates || [],
+        estimatesReceived: parsed.estimatesReceived || [],
         emailLog: parsed.emailLog || [],
         gmailSearchTerm: parsed.gmailSearchTerm || ''
       };
     }
   } catch (e) { /* none saved yet */ }
-  return { formUrl: '', applicationMethods: [], checklist: defaultChecklist(), notes: '', onBiddingList: false, uploadedFile: null, estimates: [], emailLog: [], gmailSearchTerm: '' };
+  return { formUrl: '', applicationMethods: [], checklist: defaultChecklist(), notes: '', onBiddingList: false, uploadedFile: null, estimates: [], estimatesReceived: [], emailLog: [], gmailSearchTerm: '' };
 }
 
 async function saveVendorDetail(vendorName, detail){
@@ -1448,11 +1481,42 @@ function queueSave(){
 function renderChecklist(){
   const box = document.getElementById('checklistBox');
   box.innerHTML = '';
+
+  if (currentDetail.onBiddingList){
+    box.innerHTML = `
+      <div class="checklist-confirmed">
+        ✅ Already confirmed as an approved vendor/subcontractor — requirements considered satisfied.
+        <a href="#" id="showChecklistDetailsLink">Show details anyway</a>
+      </div>
+    `;
+    document.getElementById('showChecklistDetailsLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      renderChecklistItems();
+    });
+    return;
+  }
+
+  renderChecklistItems();
+}
+
+function methodHintSuffix(){
+  const methods = currentDetail.applicationMethods || [];
+  const labels = { website: 'via website', pdf: 'via form/email', platform: 'via platform portal', phone: 'via phone' };
+  const hints = methods.map(m => labels[m]).filter(Boolean);
+  return hints.length ? ` (${hints.join(' or ')})` : '';
+}
+
+function renderChecklistItems(){
+  const box = document.getElementById('checklistBox');
+  box.innerHTML = '';
+  const suffix = methodHintSuffix();
   currentDetail.checklist.forEach(item => {
     const row = document.createElement('div');
     row.className = 'checklist-item';
+    if (item.status === 'missing') row.classList.add('ci-row-missing');
+    if (item.status === 'have') row.classList.add('ci-row-have');
     row.innerHTML = `
-      <span class="ci-label">${escapeHtml(item.label)}</span>
+      <span class="ci-label">${escapeHtml(item.label)}${item.status === 'missing' ? `<span class="ci-missing-hint">${escapeHtml(suffix)}</span>` : ''}</span>
       <div class="ci-toggle">
         <button class="ci-btn ${item.status === 'have' ? 'active-have' : ''}" data-status="have">Have</button>
         <button class="ci-btn ${item.status === 'missing' ? 'active-missing' : ''}" data-status="missing">Missing</button>
@@ -1463,14 +1527,14 @@ function renderChecklist(){
     row.querySelectorAll('.ci-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         item.status = btn.dataset.status;
-        renderChecklist();
+        renderChecklistItems();
         renderProgress();
         queueSave();
       });
     });
     row.querySelector('.ci-remove').addEventListener('click', () => {
       currentDetail.checklist = currentDetail.checklist.filter(i => i !== item);
-      renderChecklist();
+      renderChecklistItems();
       renderProgress();
       queueSave();
     });
@@ -1504,6 +1568,7 @@ async function openVendorDetail(vendor){
   renderBidCheckbox();
   renderUploadedFile();
   renderDeadlineDisplay(vendor);
+  renderEstimatesReceived();
   renderEstimates();
   renderEmailLog();
 
@@ -1549,7 +1614,30 @@ function renderBidCheckbox(){
   const box = document.getElementById('bidCheckbox');
   box.checked = !!currentDetail.onBiddingList;
   row.classList.toggle('checked', box.checked);
+  renderVendorStatusBanner();
+  if (typeof renderChecklist === 'function' && document.getElementById('checklistBox')) renderChecklist();
 }
+
+function renderVendorStatusBanner(){
+  const banner = document.getElementById('vendorStatusBanner');
+  const text = document.getElementById('vendorStatusText');
+  const toggleBtn = document.getElementById('vendorStatusToggle');
+  if (currentDetail.onBiddingList){
+    banner.classList.add('confirmed');
+    text.textContent = '✅ Confirmed — we\'re already on their bidding list / approved as vendor';
+    toggleBtn.textContent = 'Undo';
+  } else {
+    banner.classList.remove('confirmed');
+    text.textContent = '❓ Not confirmed yet — are we on their bidding list / approved vendor list?';
+    toggleBtn.textContent = 'Mark as confirmed';
+  }
+}
+
+document.getElementById('vendorStatusToggle').addEventListener('click', () => {
+  currentDetail.onBiddingList = !currentDetail.onBiddingList;
+  renderBidCheckbox();
+  queueSave();
+});
 
 function fileKindFromDataUrl(dataUrl){
   if (dataUrl.startsWith('data:application/pdf')) return 'pdf';
@@ -1639,6 +1727,60 @@ document.getElementById('fileRemoveBtn').addEventListener('click', () => {
 });
 
 /* ---------- Estimates we've sent to this GC ---------- */
+function renderEstimatesReceived(){
+  const box = document.getElementById('estimatesReceivedBox');
+  box.innerHTML = '';
+  if (!currentDetail.estimatesReceived.length){
+    box.innerHTML = '<div class="cheat-note" style="margin-bottom:8px;">Nothing received from them yet.</div>';
+    return;
+  }
+  currentDetail.estimatesReceived.forEach((est, idx) => {
+    const row = document.createElement('div');
+    row.className = 'estimate-item';
+    row.innerHTML = `
+      <span class="est-name">📥 ${escapeHtml(est.name)}</span>
+      <span class="est-date">${escapeHtml(est.uploadedAt)}</span>
+      <div class="file-current-actions">
+        <a href="${est.dataUrl}" target="_blank" class="file-view-link">View</a>
+        <button class="file-remove-btn" data-idx="${idx}">Remove</button>
+      </div>
+    `;
+    row.querySelector('.file-remove-btn').addEventListener('click', () => {
+      if (!confirm('Remove this file?')) return;
+      currentDetail.estimatesReceived.splice(idx, 1);
+      renderEstimatesReceived();
+      queueSave();
+    });
+    box.appendChild(row);
+  });
+}
+
+document.getElementById('estimateReceivedInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > MAX_FILE_BYTES){
+    alert('That file is too large (max ~4 MB). Try a smaller file or compress it.');
+    e.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    currentDetail.estimatesReceived.push({
+      name: file.name,
+      dataUrl: reader.result,
+      uploadedAt: new Date().toLocaleDateString()
+    });
+    renderEstimatesReceived();
+    queueSave();
+    const flash = document.getElementById('estimateSavedFlash');
+    flash.classList.add('show');
+    setTimeout(() => flash.classList.remove('show'), 1200);
+    e.target.value = '';
+  };
+  reader.onerror = () => alert('Could not read that file. Please try again.');
+  reader.readAsDataURL(file);
+});
+
 function renderEstimates(){
   const box = document.getElementById('estimatesBox');
   box.innerHTML = '';
@@ -1852,6 +1994,30 @@ async function downloadGmailAttachment(messageId, attachmentId, filename, mimeTy
   }
 }
 
+async function saveGmailAttachmentToVendorForm(messageId, att){
+  try {
+    const res = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/attachments/${att.attachmentId}`,
+      { headers: { Authorization: `Bearer ${gmailAccessToken}` } }
+    );
+    const data = await res.json();
+    const b64 = (data.data || '').replace(/-/g, '+').replace(/_/g, '/');
+    const dataUrl = `data:${att.mimeType || 'application/octet-stream'};base64,${b64}`;
+
+    currentDetail.uploadedFile = {
+      name: att.filename,
+      dataUrl,
+      uploadedAt: new Date().toISOString()
+    };
+    renderUploadedFile();
+    queueSave();
+    alert(`Saved "${att.filename}" to this company's Upload form/PDF section.`);
+  } catch (err) {
+    console.error('Could not save attachment to vendor form:', err);
+    alert('Could not save that attachment. Try downloading it instead.');
+  }
+}
+
 async function searchGmailForCurrentVendor(){
   const term = document.getElementById('gmailSearchTermInput').value.trim() || (currentVendor ? currentVendor.name : '');
   if (!term || !gmailAccessToken) return;
@@ -1890,6 +2056,13 @@ async function searchGmailForCurrentVendor(){
     box.innerHTML = '';
     let anyLinks = false;
     let anyAttachments = false;
+    let anyAcceptancePhrase = false;
+    let bestLink = null;
+    let bestAttachment = null; // { messageId, att }
+    let bestSenderEmail = null;
+    const acceptancePatterns = /added you to (our|the) (bid|bidder|vendor|subcontractor)|you('re| are) (now )?(an )?approved (vendor|subcontractor)|on (our|the) (bid|bidder|vendor) list|welcome to (our|the) (vendor|subcontractor|bidder) (list|program)|added to (our|the) (subcontractor|vendor) list/i;
+    const automatedSenderPattern = /noreply|no-reply|notifications?@|team@buildingconnected|procoretech|isqftmail|calendar-notification/i;
+
     details.forEach(msg => {
       const headers = (msg.payload && msg.payload.headers) || [];
       const get = (name) => (headers.find(h => h.name === name) || {}).value || '';
@@ -1902,8 +2075,13 @@ async function searchGmailForCurrentVendor(){
       const bodyText = extractGmailBodyText(msg.payload);
       const links = extractLinksFromText(bodyText || snippet);
       const attachments = extractGmailAttachments(msg.payload);
-      if (links.length) anyLinks = true;
-      if (attachments.length) anyAttachments = true;
+      if (links.length){ anyLinks = true; if (!bestLink) bestLink = links[0]; }
+      if (attachments.length){ anyAttachments = true; if (!bestAttachment) bestAttachment = { messageId: msg.id, att: attachments[0] }; }
+      if (acceptancePatterns.test(bodyText || snippet)) anyAcceptancePhrase = true;
+      if (!bestSenderEmail && !automatedSenderPattern.test(from)){
+        const emailMatch = from.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+        if (emailMatch) bestSenderEmail = emailMatch[0];
+      }
 
       const linksHtml = links.length
         ? `<div class="gm-links"><b>🔗 Links in this email:</b><br>${links.map(l => `<a href="${escapeHtml(l)}" target="_blank">${escapeHtml(l.length > 60 ? l.slice(0, 60) + '…' : l)}</a>`).join('<br>')}</div>`
@@ -1927,16 +2105,70 @@ async function searchGmailForCurrentVendor(){
         const attBox = card.querySelector(`#gm-att-${msg.id}`);
         attBox.innerHTML = '<b style="font-size:11px;">📎 Attachments:</b>';
         attachments.forEach(att => {
+          const wrap = document.createElement('span');
+          wrap.style.display = 'inline-flex';
+          wrap.style.gap = '4px';
           const btn = document.createElement('button');
           btn.className = 'gm-attachment-btn';
           btn.textContent = `⬇ ${att.filename}`;
           btn.addEventListener('click', () => downloadGmailAttachment(msg.id, att.attachmentId, att.filename, att.mimeType));
-          attBox.appendChild(btn);
+          const saveBtn = document.createElement('button');
+          saveBtn.className = 'gm-attachment-btn';
+          saveBtn.textContent = '📌 Save to this company\'s form';
+          saveBtn.addEventListener('click', () => saveGmailAttachmentToVendorForm(msg.id, att));
+          wrap.appendChild(btn);
+          wrap.appendChild(saveBtn);
+          attBox.appendChild(wrap);
         });
       }
 
       box.appendChild(card);
     });
+
+    // Clear, directive guidance box — tells Maria exactly where to apply and gives one-click actions.
+    if (anyLinks || anyAttachments || bestSenderEmail){
+      const guideBox = document.createElement('div');
+      guideBox.className = 'gm-suggestion gm-howto';
+      let lines = ['<b>📋 How to apply — based on these emails:</b>'];
+
+      if (bestLink){
+        lines.push(`🌐 Here's the webpage to apply: <a href="${escapeHtml(bestLink)}" target="_blank">${escapeHtml(bestLink.length > 50 ? bestLink.slice(0, 50) + '…' : bestLink)}</a> <button class="cheat-copy-btn" id="useAsApplyLink">Use as Link to Apply</button>`);
+      }
+      if (bestAttachment){
+        lines.push(`📄 Here's the form: <b>${escapeHtml(bestAttachment.att.filename)}</b> — use the "📌 Save to this company's form" button above to attach it here.`);
+      }
+      if (!bestLink && !bestAttachment && bestSenderEmail){
+        lines.push(`📧 No form or webpage found — looks like you apply by emailing directly: <b>${escapeHtml(bestSenderEmail)}</b>`);
+      }
+
+      guideBox.innerHTML = lines.join('<br><br>');
+      box.insertBefore(guideBox, box.firstChild);
+
+      const useLinkBtn = guideBox.querySelector('#useAsApplyLink');
+      if (useLinkBtn){
+        useLinkBtn.addEventListener('click', () => {
+          document.getElementById('formUrlInput').value = bestLink;
+          currentDetail.formUrl = bestLink;
+          updateOpenFormBtn();
+          if (!currentDetail.applicationMethods.includes('website')) currentDetail.applicationMethods.push('website');
+          document.querySelectorAll('.app-method-cb').forEach(cb => { if (cb.value === 'website') cb.checked = true; });
+          queueSave();
+        });
+      }
+    }
+
+    if (anyAcceptancePhrase && !currentDetail.onBiddingList){
+      const acceptBox = document.createElement('div');
+      acceptBox.className = 'gm-suggestion';
+      acceptBox.innerHTML = `The tracker noticed language suggesting we've already been accepted. <b>Mark as confirmed on their bidding list?</b> <button class="cheat-copy-btn" id="acceptVendorSuggestion">Use this</button>`;
+      acceptBox.querySelector('#acceptVendorSuggestion').addEventListener('click', () => {
+        currentDetail.onBiddingList = true;
+        renderBidCheckbox();
+        queueSave();
+        acceptBox.remove();
+      });
+      box.insertBefore(acceptBox, box.firstChild);
+    }
 
     if ((!currentDetail.applicationMethods || !currentDetail.applicationMethods.length) && (anyLinks || anyAttachments)){
       const suggestedValues = [];
