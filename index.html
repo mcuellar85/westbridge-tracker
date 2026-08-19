@@ -169,12 +169,15 @@
   }
   .link-apply-title{ font-size:13px; font-weight:800; color:var(--safety); margin-bottom:8px; }
   .link-apply-box .form-link-box{ margin-bottom:0; background:var(--panel); }
-  .app-method-row{ display:flex; align-items:center; gap:8px; margin-top:10px; }
-  .app-method-row label{ font-size:11px; color:var(--text-dim); font-weight:700; text-transform:uppercase; letter-spacing:0.03em; white-space:nowrap; }
-  .app-method-row select{
-    flex:1; background:var(--panel); border:1px solid var(--line); color:var(--text);
-    border-radius:6px; padding:6px 8px; font-size:12.5px;
+  .app-method-row{ margin-top:10px; }
+  .app-method-row .amr-title{ font-size:11px; color:var(--text-dim); font-weight:700; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:6px; }
+  .method-checkboxes{ display:flex; flex-wrap:wrap; gap:8px; }
+  .method-checkboxes label{
+    display:flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--line);
+    border-radius:6px; padding:6px 10px; font-size:12px; color:var(--text); cursor:pointer; text-transform:none; font-weight:500; letter-spacing:normal;
   }
+  .method-checkboxes label:has(input:checked){ border-color:var(--safety); background:var(--safety-dim); }
+  .method-checkboxes input{ width:14px; height:14px; accent-color:var(--safety); cursor:pointer; }
   .method-badge{
     font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.03em;
     padding:3px 8px; border-radius:5px; white-space:nowrap;
@@ -289,6 +292,45 @@
   .estimate-item .est-date{ font-size:11px; color:var(--text-dim); flex-shrink:0; margin-left:8px; }
   .email-log-item .log-text{ font-size:12.5px; }
   .email-log-item .log-date{ font-size:10.5px; color:var(--text-dim); display:block; margin-top:2px; }
+  .email-log-item .log-sender{ font-weight:700; color:var(--text); font-size:12.5px; display:block; margin-bottom:2px; }
+  .email-log-item .log-attachment{ display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--safety); margin-top:6px; text-decoration:none; }
+
+  .email-log-form{ background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:12px; margin-top:8px; }
+  .email-log-form .field{ margin-bottom:10px; }
+  .email-log-form textarea{ min-height:56px; }
+  .log-file-checkbox-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .log-file-checkbox-row input{ width:16px; height:16px; accent-color:var(--safety); }
+  .log-file-checkbox-row label{ font-size:12.5px; color:var(--text); }
+
+  .gmail-search-row{ display:flex; gap:8px; margin-bottom:8px; }
+  .gmail-search-row input{ flex:1; background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:7px; padding:8px 10px; font-size:12.5px; }
+  .gmail-search-row .btn{ white-space:nowrap; }
+
+  .gmail-connect-box{ text-align:center; padding:20px; background:var(--panel-2); border:1px dashed var(--line); border-radius:8px; margin-bottom:8px; }
+  .gmail-connect-box p{ font-size:12.5px; color:var(--text-dim); margin:0 0 12px; }
+  .gmail-results-box{ display:flex; flex-direction:column; gap:8px; margin-bottom:8px; max-height:340px; overflow-y:auto; }
+  .gmail-msg-card{ background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .gmail-msg-card .gm-top{ display:flex; justify-content:space-between; gap:8px; margin-bottom:4px; }
+  .gmail-msg-card .gm-from{ font-size:12.5px; font-weight:700; color:var(--text); }
+  .gmail-msg-card .gm-date{ font-size:10.5px; color:var(--text-dim); white-space:nowrap; }
+  .gmail-msg-card .gm-subject{ font-size:12px; color:var(--text); margin-bottom:3px; }
+  .gmail-msg-card .gm-snippet{ font-size:11.5px; color:var(--text-dim); line-height:1.4; }
+  .gmail-msg-card .gm-open{ font-size:10.5px; color:var(--safety); text-decoration:none; font-weight:700; display:inline-block; margin-top:6px; }
+  .gm-links{ font-size:11px; color:var(--text-dim); margin-top:6px; line-height:1.6; }
+  .gm-links a{ color:#7ab8ff; text-decoration:none; word-break:break-all; }
+  .gm-links a:hover{ text-decoration:underline; }
+  .gm-attachments{ margin-top:8px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .gm-attachment-btn{
+    background:var(--panel); border:1px solid var(--safety); color:var(--safety);
+    font-size:10.5px; font-weight:700; padding:4px 8px; border-radius:6px; cursor:pointer;
+  }
+  .gm-attachment-btn:hover{ background:var(--safety); color:#1a1a1a; }
+  .gm-suggestion{
+    background:var(--safety-dim); border:1px solid var(--safety); border-radius:8px;
+    padding:8px 10px; font-size:11.5px; color:var(--text); margin-bottom:4px;
+  }
+  .gmail-status-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .gmail-status-row .gm-connected{ font-size:11px; color:var(--ok); font-weight:700; }
 
   .section-title{ font-size:11.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-dim); font-weight:700; margin:18px 0 8px; }
 
@@ -401,15 +443,13 @@
         <a href="#" target="_blank" class="open-form-btn disabled" id="openFormBtn">Open form</a>
       </div>
       <div class="app-method-row">
-        <label for="appMethodSelect">How do we apply here?</label>
-        <select id="appMethodSelect">
-          <option value="">Not set yet</option>
-          <option value="website">🌐 Website only</option>
-          <option value="pdf">📄 PDF/Email form only</option>
-          <option value="mixed">🔀 Mixed (website + documents)</option>
-          <option value="platform">🔑 Platform portal (iSqFt/BuildingConnected/Procore)</option>
-          <option value="phone">📞 Direct contact (over the phone)</option>
-        </select>
+        <div class="amr-title">How do we apply here? (check all that apply)</div>
+        <div class="method-checkboxes">
+          <label><input type="checkbox" class="app-method-cb" value="website"> 🌐 Website</label>
+          <label><input type="checkbox" class="app-method-cb" value="pdf"> 📄 PDF/Email form</label>
+          <label><input type="checkbox" class="app-method-cb" value="platform"> 🔑 Platform portal</label>
+          <label><input type="checkbox" class="app-method-cb" value="phone"> 📞 Already in (phone)</label>
+        </div>
       </div>
     </div>
 
@@ -469,10 +509,44 @@
 
     <details class="detail-section">
       <summary>✉️ Email correspondence log</summary>
+
+      <div class="gmail-search-row">
+        <input type="text" id="gmailSearchTermInput" placeholder="Search term (defaults to company name)">
+      </div>
+
+      <div id="gmailConnectBox" class="gmail-connect-box" style="display:none;">
+        <p>Connect your Gmail once to see this company's emails right here, inline.</p>
+        <button class="btn primary" id="connectGmailBtn">🔌 Connect Gmail</button>
+      </div>
+
+      <div id="gmailConnectedBox" style="display:none;">
+        <div class="gmail-status-row">
+          <span class="gm-connected">🟢 Gmail connected</span>
+          <button class="cheat-copy-btn" id="refreshGmailBtn">↻ Refresh</button>
+        </div>
+        <div id="gmailResultsBox" class="gmail-results-box"></div>
+      </div>
+
       <div id="emailLogBox"></div>
-      <div class="add-item-row">
-        <input type="text" id="newEmailLogInput" placeholder="e.g. Replied confirming receipt — john@stephenson.com, 08/14/2026">
-        <button id="addEmailLogBtn">+ Add entry</button>
+      <div class="email-log-form">
+        <div class="field">
+          <label>Sender</label>
+          <input type="text" id="newEmailLogSender" placeholder="e.g. John Smith (john@stephenson.com), or 'Us — Maria'">
+        </div>
+        <div class="field">
+          <label>Email content / summary</label>
+          <textarea id="newEmailLogContent" placeholder="What did the email say?"></textarea>
+        </div>
+        <div class="log-file-checkbox-row">
+          <input type="checkbox" id="newEmailLogHasFile">
+          <label for="newEmailLogHasFile">They sent a file to help make the estimate</label>
+        </div>
+        <div id="newEmailLogFileBox" style="display:none;">
+          <label class="file-input-label" for="newEmailLogFileInput">📎 Upload the file they sent</label>
+          <input type="file" id="newEmailLogFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*">
+          <span id="newEmailLogFileName" class="file-hint"></span>
+        </div>
+        <button id="addEmailLogBtn" class="btn primary" style="margin-top:8px;">+ Add entry</button>
       </div>
     </details>
 
@@ -602,6 +676,7 @@
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 /* Published-to-web CSV link (File → Share → Publish to web → CSV) */
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBM3CR9_fQd0cmbYr4hsrPwfHr6MOFYCG5dfban9hK0NJiRg4x_OVFlQxwp96kdro4A8CfFzD3KD1G/pub?gid=0&single=true&output=csv";
@@ -775,16 +850,19 @@ function renderCards(filter){
       if (detail.onBiddingList){
         tagRow.insertAdjacentHTML('beforeend', `<span class="tag auto ok">✓ On bidding list</span>`);
       }
-      const methodLabels = {
-        website: { text: '🌐 Website only', cls: 'website' },
-        pdf: { text: '📄 PDF/Email form', cls: 'pdf' },
-        mixed: { text: '🔀 Mixed', cls: 'mixed' },
+      const methodShort = {
+        website: { text: '🌐 Website', cls: 'website' },
+        pdf: { text: '📄 PDF/Email', cls: 'pdf' },
         platform: { text: '🔑 Platform portal', cls: 'platform' },
-        phone: { text: '📞 Direct contact', cls: 'phone' }
+        phone: { text: '📞 Already in (phone)', cls: 'phone' }
       };
-      const m = methodLabels[detail.applicationMethod];
-      if (m){
-        tagRow.insertAdjacentHTML('beforeend', `<span class="method-badge ${m.cls}">${m.text}</span>`);
+      const methods = detail.applicationMethods || [];
+      if (methods.length === 1){
+        const m = methodShort[methods[0]];
+        if (m) tagRow.insertAdjacentHTML('beforeend', `<span class="method-badge ${m.cls}">${m.text}</span>`);
+      } else if (methods.length > 1){
+        const combined = methods.map(k => (methodShort[k] || {}).text).filter(Boolean).join(' + ');
+        tagRow.insertAdjacentHTML('beforeend', `<span class="method-badge mixed">🔀 Mixed: ${combined}</span>`);
       }
     }).catch(() => {});
   });
@@ -1320,19 +1398,27 @@ async function loadVendorDetail(vendorName){
     const res = await storage.get(key, true);
     if (res && res.value) {
       const parsed = JSON.parse(res.value);
+      let methods = parsed.applicationMethods;
+      if (!Array.isArray(methods)){
+        // Migrate from the old single-value field, if present.
+        methods = parsed.applicationMethod && parsed.applicationMethod !== 'mixed'
+          ? [parsed.applicationMethod]
+          : [];
+      }
       return {
         formUrl: parsed.formUrl || '',
-        applicationMethod: parsed.applicationMethod || '',
+        applicationMethods: methods,
         checklist: parsed.checklist || defaultChecklist(),
         notes: parsed.notes || '',
         onBiddingList: !!parsed.onBiddingList,
         uploadedFile: parsed.uploadedFile || null,
         estimates: parsed.estimates || [],
-        emailLog: parsed.emailLog || []
+        emailLog: parsed.emailLog || [],
+        gmailSearchTerm: parsed.gmailSearchTerm || ''
       };
     }
   } catch (e) { /* none saved yet */ }
-  return { formUrl: '', applicationMethod: '', checklist: defaultChecklist(), notes: '', onBiddingList: false, uploadedFile: null, estimates: [], emailLog: [] };
+  return { formUrl: '', applicationMethods: [], checklist: defaultChecklist(), notes: '', onBiddingList: false, uploadedFile: null, estimates: [], emailLog: [], gmailSearchTerm: '' };
 }
 
 async function saveVendorDetail(vendorName, detail){
@@ -1408,7 +1494,9 @@ async function openVendorDetail(vendor){
   document.getElementById('detailName').textContent = vendor.name;
   document.getElementById('detailSub').textContent = vendor.sub || '';
   document.getElementById('formUrlInput').value = currentDetail.formUrl || '';
-  document.getElementById('appMethodSelect').value = currentDetail.applicationMethod || '';
+  document.querySelectorAll('.app-method-cb').forEach(cb => {
+    cb.checked = currentDetail.applicationMethods.includes(cb.value);
+  });
   updateOpenFormBtn();
   document.getElementById('detailNotes').value = currentDetail.notes || '';
   renderChecklist();
@@ -1418,6 +1506,15 @@ async function openVendorDetail(vendor){
   renderDeadlineDisplay(vendor);
   renderEstimates();
   renderEmailLog();
+
+  const savedTerm = currentDetail.gmailSearchTerm || vendor.name;
+  document.getElementById('gmailSearchTermInput').value = savedTerm;
+  if (gmailAccessToken){
+    showGmailConnected();
+    searchGmailForCurrentVendor();
+  } else {
+    showGmailDisconnected();
+  }
 
   const extRow = document.getElementById('externalLinkRow');
   extRow.innerHTML = vendor.sheetUrl
@@ -1502,9 +1599,13 @@ document.getElementById('formUrlInput').addEventListener('input', () => {
   updateOpenFormBtn();
   queueSave();
 });
-document.getElementById('appMethodSelect').addEventListener('change', () => {
-  currentDetail.applicationMethod = document.getElementById('appMethodSelect').value;
-  queueSave();
+document.querySelectorAll('.app-method-cb').forEach(cb => {
+  cb.addEventListener('change', () => {
+    currentDetail.applicationMethods = Array.from(document.querySelectorAll('.app-method-cb'))
+      .filter(c => c.checked)
+      .map(c => c.value);
+    queueSave();
+  });
 });
 document.getElementById('bidCheckbox').addEventListener('change', () => {
   currentDetail.onBiddingList = document.getElementById('bidCheckbox').checked;
@@ -1548,11 +1649,17 @@ function renderEstimates(){
   currentDetail.estimates.forEach((est, idx) => {
     const row = document.createElement('div');
     row.className = 'estimate-item';
+    row.style.flexDirection = 'column';
+    row.style.alignItems = 'stretch';
     row.innerHTML = `
-      <span class="est-name">📄 ${escapeHtml(est.name)}</span>
-      <span class="est-date">${escapeHtml(est.uploadedAt)}</span>
-      <div class="file-current-actions">
+      <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+        <span class="est-name">📄 ${escapeHtml(est.name)}</span>
+        <span class="est-date">${escapeHtml(est.uploadedAt)}</span>
+      </div>
+      <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">Sent by: <b style="color:var(--text);">${escapeHtml(est.sentBy || 'Maria Cuellar (us)')}</b></div>
+      <div class="file-current-actions" style="margin-top:8px; justify-content:flex-end;">
         <a href="${est.dataUrl}" target="_blank" class="file-view-link">View</a>
+        <button class="file-view-link email-est-btn" data-idx="${idx}" style="border:none; cursor:pointer;">✉️ Draft email</button>
         <button class="file-remove-btn" data-idx="${idx}">Remove</button>
       </div>
     `;
@@ -1562,8 +1669,36 @@ function renderEstimates(){
       renderEstimates();
       queueSave();
     });
+    row.querySelector('.email-est-btn').addEventListener('click', () => {
+      openEstimateEmailDraft(est);
+    });
     box.appendChild(row);
   });
+}
+
+function openEstimateEmailDraft(est){
+  const vendorName = currentVendor ? currentVendor.name : 'this vendor';
+  const subject = `Estimate from Westbridge Demolition — ${vendorName}`;
+  const body =
+`Hi,
+
+Please find attached our estimate for ${vendorName}.
+
+Let me know if you have any questions or need anything else to move this forward.
+
+Best regards,
+
+WESTBRIDGE DEMOLITION
+Maria Cuellar
+CLIENT DEVELOPMENT MANAGER
+1015 Villa Circle, Boynton Beach, FL 33435
+O 561-928-8035
+W westbridgedemolition.com`;
+
+  alert(`Don't forget: your email app will open, but browsers can't attach files automatically.\n\nAttach this file before sending:\n${est.name}\n\n(Tip: click "View" first to download it if it's not already on your computer.)`);
+
+  const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = mailto;
 }
 
 document.getElementById('estimateUploadInput').addEventListener('change', (e) => {
@@ -1579,7 +1714,8 @@ document.getElementById('estimateUploadInput').addEventListener('change', (e) =>
     currentDetail.estimates.push({
       name: file.name,
       dataUrl: reader.result,
-      uploadedAt: new Date().toLocaleDateString()
+      uploadedAt: new Date().toLocaleDateString(),
+      sentBy: 'Maria Cuellar (us)'
     });
     renderEstimates();
     queueSave();
@@ -1593,6 +1729,252 @@ document.getElementById('estimateUploadInput').addEventListener('change', (e) =>
 });
 
 /* ---------- Email correspondence log ---------- */
+/* ---------- Gmail integration (inline, via Google Identity Services + Gmail API) ----------
+   PASTE your OAuth Client ID below (see the Gmail Integration setup guide). */
+const GMAIL_CLIENT_ID = "330027426486-ko9v4duns81674j2imf7pthmv2gopujp.apps.googleusercontent.com";
+const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
+
+let gmailAccessToken = null;
+let gmailTokenClient = null;
+let gmailConfigured = GMAIL_CLIENT_ID && !GMAIL_CLIENT_ID.startsWith('PASTE_');
+
+function initGmailAuth(){
+  if (!gmailConfigured || typeof google === 'undefined' || !google.accounts) return;
+  gmailTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GMAIL_CLIENT_ID,
+    scope: GMAIL_SCOPE,
+    callback: (resp) => {
+      if (resp && resp.access_token){
+        gmailAccessToken = resp.access_token;
+        showGmailConnected();
+        searchGmailForCurrentVendor();
+      }
+    }
+  });
+}
+
+function showGmailConnected(){
+  document.getElementById('gmailConnectBox').style.display = 'none';
+  document.getElementById('gmailConnectedBox').style.display = 'block';
+}
+function showGmailDisconnected(){
+  document.getElementById('gmailConnectBox').style.display = gmailConfigured ? 'block' : 'none';
+  document.getElementById('gmailConnectedBox').style.display = 'none';
+  if (!gmailConfigured){
+    document.getElementById('gmailConnectBox').innerHTML =
+      '<p>Gmail connection isn\'t set up yet — see the setup guide to enable this.</p>';
+    document.getElementById('gmailConnectBox').style.display = 'block';
+  }
+}
+
+document.getElementById('connectGmailBtn').addEventListener('click', () => {
+  if (!gmailTokenClient) initGmailAuth();
+  if (gmailTokenClient) gmailTokenClient.requestAccessToken();
+});
+document.getElementById('refreshGmailBtn').addEventListener('click', () => {
+  searchGmailForCurrentVendor();
+});
+
+function extractGmailBodyText(payload){
+  // Walk the MIME parts to find plain text (preferred) or html body, base64url-decoded.
+  function decode(data){
+    if (!data) return '';
+    try {
+      const b64 = data.replace(/-/g, '+').replace(/_/g, '/');
+      return decodeURIComponent(escape(atob(b64)));
+    } catch (e) { return ''; }
+  }
+  function walk(part){
+    if (!part) return '';
+    if (part.mimeType === 'text/plain' && part.body && part.body.data) return decode(part.body.data);
+    if (part.parts) {
+      for (const p of part.parts) {
+        const found = walk(p);
+        if (found) return found;
+      }
+    }
+    if (part.mimeType === 'text/html' && part.body && part.body.data) {
+      return decode(part.body.data).replace(/<[^>]+>/g, ' ');
+    }
+    return '';
+  }
+  return walk(payload);
+}
+
+function extractGmailAttachments(payload, collected){
+  collected = collected || [];
+  if (!payload) return collected;
+  if (payload.filename && payload.body && payload.body.attachmentId){
+    collected.push({
+      filename: payload.filename,
+      attachmentId: payload.body.attachmentId,
+      mimeType: payload.mimeType
+    });
+  }
+  if (payload.parts) payload.parts.forEach(p => extractGmailAttachments(p, collected));
+  return collected;
+}
+
+function extractLinksFromText(text){
+  const matches = text.match(/https?:\/\/[^\s<>"')]+/g) || [];
+  // Dedupe and drop obvious tracking/image pixels or overly long junk
+  const seen = new Set();
+  return matches.filter(u => {
+    if (seen.has(u)) return false;
+    seen.add(u);
+    return u.length < 300;
+  }).slice(0, 5);
+}
+
+async function downloadGmailAttachment(messageId, attachmentId, filename, mimeType){
+  try {
+    const res = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/attachments/${attachmentId}`,
+      { headers: { Authorization: `Bearer ${gmailAccessToken}` } }
+    );
+    const data = await res.json();
+    const b64 = (data.data || '').replace(/-/g, '+').replace(/_/g, '/');
+    const byteChars = atob(b64);
+    const byteNumbers = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+    const blob = new Blob([new Uint8Array(byteNumbers)], { type: mimeType || 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('Attachment download failed:', err);
+    alert('Could not download that attachment. Try opening the full thread in Gmail instead.');
+  }
+}
+
+async function searchGmailForCurrentVendor(){
+  const term = document.getElementById('gmailSearchTermInput').value.trim() || (currentVendor ? currentVendor.name : '');
+  if (!term || !gmailAccessToken) return;
+
+  const box = document.getElementById('gmailResultsBox');
+  box.innerHTML = '<div class="cheat-note">Loading emails…</div>';
+
+  try {
+    const listRes = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(term)}&maxResults=8`,
+      { headers: { Authorization: `Bearer ${gmailAccessToken}` } }
+    );
+    if (listRes.status === 401){
+      gmailAccessToken = null;
+      showGmailDisconnected();
+      box.innerHTML = '<div class="cheat-note">Gmail connection expired — click "Connect Gmail" again.</div>';
+      return;
+    }
+    const listData = await listRes.json();
+    const messages = listData.messages || [];
+
+    if (!messages.length){
+      box.innerHTML = '<div class="cheat-note">No emails found for this search term.</div>';
+      return;
+    }
+
+    // format=full gives us the body (for link detection) and attachment metadata.
+    const details = await Promise.all(messages.map(async (m) => {
+      const res = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=full`,
+        { headers: { Authorization: `Bearer ${gmailAccessToken}` } }
+      );
+      return res.json();
+    }));
+
+    box.innerHTML = '';
+    let anyLinks = false;
+    let anyAttachments = false;
+    details.forEach(msg => {
+      const headers = (msg.payload && msg.payload.headers) || [];
+      const get = (name) => (headers.find(h => h.name === name) || {}).value || '';
+      const from = get('From');
+      const subject = get('Subject') || '(no subject)';
+      const date = get('Date');
+      const snippet = msg.snippet || '';
+      const permalink = `https://mail.google.com/mail/u/0/#all/${msg.threadId || msg.id}`;
+
+      const bodyText = extractGmailBodyText(msg.payload);
+      const links = extractLinksFromText(bodyText || snippet);
+      const attachments = extractGmailAttachments(msg.payload);
+      if (links.length) anyLinks = true;
+      if (attachments.length) anyAttachments = true;
+
+      const linksHtml = links.length
+        ? `<div class="gm-links"><b>🔗 Links in this email:</b><br>${links.map(l => `<a href="${escapeHtml(l)}" target="_blank">${escapeHtml(l.length > 60 ? l.slice(0, 60) + '…' : l)}</a>`).join('<br>')}</div>`
+        : '';
+
+      const card = document.createElement('div');
+      card.className = 'gmail-msg-card';
+      card.innerHTML = `
+        <div class="gm-top">
+          <span class="gm-from">${escapeHtml(from)}</span>
+          <span class="gm-date">${escapeHtml(date ? new Date(date).toLocaleDateString() : '')}</span>
+        </div>
+        <div class="gm-subject">${escapeHtml(subject)}</div>
+        <div class="gm-snippet">${escapeHtml(snippet)}</div>
+        ${linksHtml}
+        <div class="gm-attachments" id="gm-att-${msg.id}"></div>
+        <a href="${permalink}" target="_blank" class="gm-open">Open full thread →</a>
+      `;
+
+      if (attachments.length){
+        const attBox = card.querySelector(`#gm-att-${msg.id}`);
+        attBox.innerHTML = '<b style="font-size:11px;">📎 Attachments:</b>';
+        attachments.forEach(att => {
+          const btn = document.createElement('button');
+          btn.className = 'gm-attachment-btn';
+          btn.textContent = `⬇ ${att.filename}`;
+          btn.addEventListener('click', () => downloadGmailAttachment(msg.id, att.attachmentId, att.filename, att.mimeType));
+          attBox.appendChild(btn);
+        });
+      }
+
+      box.appendChild(card);
+    });
+
+    if ((!currentDetail.applicationMethods || !currentDetail.applicationMethods.length) && (anyLinks || anyAttachments)){
+      const suggestedValues = [];
+      let suggestedLabel = '';
+      if (anyLinks && anyAttachments){ suggestedValues.push('website', 'pdf'); suggestedLabel = '🔀 Mixed: Website + PDF/Email'; }
+      else if (anyLinks){ suggestedValues.push('website'); suggestedLabel = '🌐 Website'; }
+      else if (anyAttachments){ suggestedValues.push('pdf'); suggestedLabel = '📄 PDF/Email form'; }
+
+      if (suggestedValues.length){
+        const suggestBox = document.createElement('div');
+        suggestBox.className = 'gm-suggestion';
+        suggestBox.innerHTML = `Based on these emails, this looks like: <b>${suggestedLabel}</b> <button class="cheat-copy-btn" id="acceptMethodSuggestion">Use this</button>`;
+        suggestBox.querySelector('#acceptMethodSuggestion').addEventListener('click', () => {
+          document.querySelectorAll('.app-method-cb').forEach(cb => {
+            if (suggestedValues.includes(cb.value)) cb.checked = true;
+          });
+          currentDetail.applicationMethods = Array.from(document.querySelectorAll('.app-method-cb'))
+            .filter(c => c.checked)
+            .map(c => c.value);
+          queueSave();
+          suggestBox.remove();
+        });
+        box.insertBefore(suggestBox, box.firstChild);
+      }
+    }
+  } catch (err) {
+    console.error('Gmail search failed:', err);
+    box.innerHTML = '<div class="cheat-note">Could not load emails right now. Try refreshing.</div>';
+  }
+}
+
+document.getElementById('gmailSearchTermInput').addEventListener('input', () => {
+  const term = document.getElementById('gmailSearchTermInput').value;
+  currentDetail.gmailSearchTerm = term.trim();
+  queueSave();
+  if (gmailAccessToken) searchGmailForCurrentVendor();
+});
+
 function renderEmailLog(){
   const box = document.getElementById('emailLogBox');
   box.innerHTML = '';
@@ -1605,10 +1987,15 @@ function renderEmailLog(){
     const realIdx = currentDetail.emailLog.indexOf(entry);
     const row = document.createElement('div');
     row.className = 'email-log-item';
+    const attachmentHtml = entry.file
+      ? `<a href="${entry.file.dataUrl}" target="_blank" class="log-attachment">📎 ${escapeHtml(entry.file.name)}</a>`
+      : '';
     row.innerHTML = `
       <div>
-        <span class="log-text">${escapeHtml(entry.text)}</span>
+        <span class="log-sender">${escapeHtml(entry.sender || 'Unknown sender')}</span>
+        <span class="log-text">${escapeHtml(entry.content || entry.text || '')}</span>
         <span class="log-date">${escapeHtml(entry.date)}</span>
+        ${attachmentHtml}
       </div>
       <button class="ci-remove" title="Remove entry">✕</button>
     `;
@@ -1621,17 +2008,51 @@ function renderEmailLog(){
   });
 }
 
-document.getElementById('addEmailLogBtn').addEventListener('click', () => {
-  const input = document.getElementById('newEmailLogInput');
-  const text = input.value.trim();
-  if (!text) return;
-  currentDetail.emailLog.push({ text, date: new Date().toLocaleString() });
-  input.value = '';
-  renderEmailLog();
-  queueSave();
+document.getElementById('newEmailLogHasFile').addEventListener('change', (e) => {
+  document.getElementById('newEmailLogFileBox').style.display = e.target.checked ? 'block' : 'none';
 });
-document.getElementById('newEmailLogInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') document.getElementById('addEmailLogBtn').click();
+document.getElementById('newEmailLogFileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  document.getElementById('newEmailLogFileName').textContent = file ? file.name : '';
+});
+
+document.getElementById('addEmailLogBtn').addEventListener('click', () => {
+  const sender = document.getElementById('newEmailLogSender').value.trim();
+  const content = document.getElementById('newEmailLogContent').value.trim();
+  const hasFile = document.getElementById('newEmailLogHasFile').checked;
+  const fileInput = document.getElementById('newEmailLogFileInput');
+  const file = fileInput.files[0];
+
+  if (!sender && !content) return;
+
+  const entry = { sender, content, date: new Date().toLocaleString(), file: null };
+
+  const finish = () => {
+    currentDetail.emailLog.push(entry);
+    document.getElementById('newEmailLogSender').value = '';
+    document.getElementById('newEmailLogContent').value = '';
+    document.getElementById('newEmailLogHasFile').checked = false;
+    document.getElementById('newEmailLogFileBox').style.display = 'none';
+    document.getElementById('newEmailLogFileName').textContent = '';
+    fileInput.value = '';
+    renderEmailLog();
+    queueSave();
+  };
+
+  if (hasFile && file){
+    if (file.size > MAX_FILE_BYTES){
+      alert('That file is too large (max ~4 MB).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      entry.file = { name: file.name, dataUrl: reader.result };
+      finish();
+    };
+    reader.readAsDataURL(file);
+  } else {
+    finish();
+  }
 });
 
 /* ---------- Fill PDF (only works for PDFs that have real fillable form fields) ---------- */
@@ -1946,6 +2367,7 @@ loadBanner();
 loadSyncedBy();
 loadData();
 setInterval(loadData, REFRESH_MS);
+setTimeout(initGmailAuth, 800); // small delay so the Google Identity Services script has time to load
 </script>
 </body>
 </html>
