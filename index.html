@@ -169,6 +169,20 @@
   }
   .link-apply-title{ font-size:13px; font-weight:800; color:var(--safety); margin-bottom:8px; }
   .link-apply-box .form-link-box{ margin-bottom:0; background:var(--panel); }
+  .app-method-row{ display:flex; align-items:center; gap:8px; margin-top:10px; }
+  .app-method-row label{ font-size:11px; color:var(--text-dim); font-weight:700; text-transform:uppercase; letter-spacing:0.03em; white-space:nowrap; }
+  .app-method-row select{
+    flex:1; background:var(--panel); border:1px solid var(--line); color:var(--text);
+    border-radius:6px; padding:6px 8px; font-size:12.5px;
+  }
+  .method-badge{
+    font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.03em;
+    padding:3px 8px; border-radius:5px; white-space:nowrap;
+  }
+  .method-badge.website{ background:#1c3a5e; color:#7ab8ff; }
+  .method-badge.pdf{ background:#4a3b14; color:var(--warn); }
+  .method-badge.mixed{ background:#3a2a5e; color:#c7a8ff; }
+  .method-badge.platform{ background:#1e3a29; color:var(--ok); }
 
   .detail-section{
     border:1px solid var(--line); border-radius:8px; margin-bottom:10px; overflow:hidden;
@@ -384,6 +398,16 @@
       <div class="form-link-box">
         <input type="text" id="formUrlInput" placeholder="Paste link here to apply">
         <a href="#" target="_blank" class="open-form-btn disabled" id="openFormBtn">Open form</a>
+      </div>
+      <div class="app-method-row">
+        <label for="appMethodSelect">How do we apply here?</label>
+        <select id="appMethodSelect">
+          <option value="">Not set yet</option>
+          <option value="website">🌐 Website only</option>
+          <option value="pdf">📄 PDF/Email form only</option>
+          <option value="mixed">🔀 Mixed (website + documents)</option>
+          <option value="platform">🔑 Platform portal (iSqFt/BuildingConnected/Procore)</option>
+        </select>
       </div>
     </div>
 
@@ -744,9 +768,20 @@ function renderCards(filter){
 
     // Async: check if this vendor is already marked as on the bidding list, and flag it visually.
     loadVendorDetail(d.name).then(detail => {
+      const tagRow = document.getElementById(`tagrow-${slugify(d.name)}`);
+      if (!tagRow) return;
       if (detail.onBiddingList){
-        const tagRow = document.getElementById(`tagrow-${slugify(d.name)}`);
-        if (tagRow) tagRow.insertAdjacentHTML('beforeend', `<span class="tag auto ok">✓ On bidding list</span>`);
+        tagRow.insertAdjacentHTML('beforeend', `<span class="tag auto ok">✓ On bidding list</span>`);
+      }
+      const methodLabels = {
+        website: { text: '🌐 Website only', cls: 'website' },
+        pdf: { text: '📄 PDF/Email form', cls: 'pdf' },
+        mixed: { text: '🔀 Mixed', cls: 'mixed' },
+        platform: { text: '🔑 Platform portal', cls: 'platform' }
+      };
+      const m = methodLabels[detail.applicationMethod];
+      if (m){
+        tagRow.insertAdjacentHTML('beforeend', `<span class="method-badge ${m.cls}">${m.text}</span>`);
       }
     }).catch(() => {});
   });
@@ -869,9 +904,9 @@ function defaultCheatSheet(){
     { id: 'license', label: 'Contractor License #', value: 'CBC1265846' },
     { id: 'licenseexp', label: 'License Expiration', value: '08/31/2026 (renewal in progress per Benito, 07/31/2026)' },
     { id: 'ein', label: 'Federal Tax ID (EIN)', value: '83-1376075' },
-    { id: 'address', label: 'Correspondence Address (Westbridge)', value: '1015 Villa Circle, Boynton Beach, FL 33435' },
-    { id: 'address2', label: 'Principal Address (Sunbiz)', value: '1055 Cypress Fox Blvd, Davenport, FL 33897' },
-    { id: 'address3', label: 'Mailing Address (Sunbiz)', value: '184 E Liberty St, Hernando, FL 34442' },
+    { id: 'address', label: 'Business Address (per COI/Insurance)', value: '184 E Liberty St, Hernando, FL 34442' },
+    { id: 'address2', label: 'Correspondence Address (Westbridge)', value: '1015 Villa Circle, Boynton Beach, FL 33435' },
+    { id: 'address3', label: 'Principal Address (Sunbiz)', value: '1055 Cypress Fox Blvd, Davenport, FL 33897' },
     { id: 'phone', label: 'Business Phone', value: '561-445-6590' },
     { id: 'email', label: 'Business Email', value: 'info@wbdfl.com' },
     { id: 'website', label: 'Website', value: 'westbridgedemolition.com' },
@@ -1284,6 +1319,7 @@ async function loadVendorDetail(vendorName){
       const parsed = JSON.parse(res.value);
       return {
         formUrl: parsed.formUrl || '',
+        applicationMethod: parsed.applicationMethod || '',
         checklist: parsed.checklist || defaultChecklist(),
         notes: parsed.notes || '',
         onBiddingList: !!parsed.onBiddingList,
@@ -1293,7 +1329,7 @@ async function loadVendorDetail(vendorName){
       };
     }
   } catch (e) { /* none saved yet */ }
-  return { formUrl: '', checklist: defaultChecklist(), notes: '', onBiddingList: false, uploadedFile: null, estimates: [], emailLog: [] };
+  return { formUrl: '', applicationMethod: '', checklist: defaultChecklist(), notes: '', onBiddingList: false, uploadedFile: null, estimates: [], emailLog: [] };
 }
 
 async function saveVendorDetail(vendorName, detail){
@@ -1369,6 +1405,7 @@ async function openVendorDetail(vendor){
   document.getElementById('detailName').textContent = vendor.name;
   document.getElementById('detailSub').textContent = vendor.sub || '';
   document.getElementById('formUrlInput').value = currentDetail.formUrl || '';
+  document.getElementById('appMethodSelect').value = currentDetail.applicationMethod || '';
   updateOpenFormBtn();
   document.getElementById('detailNotes').value = currentDetail.notes || '';
   renderChecklist();
@@ -1460,6 +1497,10 @@ function updateOpenFormBtn(){
 document.getElementById('formUrlInput').addEventListener('input', () => {
   currentDetail.formUrl = document.getElementById('formUrlInput').value.trim();
   updateOpenFormBtn();
+  queueSave();
+});
+document.getElementById('appMethodSelect').addEventListener('change', () => {
+  currentDetail.applicationMethod = document.getElementById('appMethodSelect').value;
   queueSave();
 });
 document.getElementById('bidCheckbox').addEventListener('change', () => {
