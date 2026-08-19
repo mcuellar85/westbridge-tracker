@@ -334,6 +334,7 @@
     <button class="filter-btn" data-filter="pending">In progress</button>
     <button class="filter-btn" data-filter="blocked">Blocked / not started</button>
     <button class="refresh-btn" id="platformAccessBtn" style="margin-left:auto;">🔑 Platform Access</button>
+    <button class="refresh-btn" id="companyDocsBtn">📄 Company Documents</button>
     <button class="refresh-btn" id="cheatSheetBtn">📋 Base Cheat Sheet Template</button>
     <button class="refresh-btn" id="refreshBtn">↻ Refresh now</button>
   </div>
@@ -556,6 +557,21 @@
   </div>
 </div>
 
+<!-- Company standard documents (W-9, License, COI) — shared across every vendor -->
+<div class="overlay" id="companyDocsOverlay">
+  <div class="modal detail-modal">
+    <div class="detail-head">
+      <div>
+        <h2>Company Documents</h2>
+        <div class="sub">W-9, License, and COI — the same for every application, upload once here</div>
+      </div>
+      <button class="close-x" id="closeCompanyDocsBtn">✕</button>
+    </div>
+    <p class="cheat-note">These are shared across all vendors — no need to re-upload them on each company's page. Each GC may still require a fresh COI naming them as Certificate Holder; check with the broker before reusing this one.</p>
+    <div id="companyDocsBox"></div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -570,7 +586,7 @@ const EDIT_GID = "0";
 /* ---------- Real shared storage (backed by your Google Sheet via Apps Script) ----------
    PASTE your deployed Web App URL below (see Tracker-Storage-Backend.gs + its setup guide).
    Until you paste a real URL here, saving will silently fail and nothing will persist. */
-const REMOTE_STORAGE_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+const REMOTE_STORAGE_URL = "https://script.google.com/macros/s/AKfycbwaU38SaPCJEU7zhEAG6HYylY-MMsIJFeUR37gVrGdCUUp98wTHFgpfMQQTmZqmLcGB/exec";
 
 const storage = {
   async get(key, _shared){
@@ -853,18 +869,19 @@ function defaultCheatSheet(){
     { id: 'license', label: 'Contractor License #', value: 'CBC1265846' },
     { id: 'licenseexp', label: 'License Expiration', value: '08/31/2026 (renewal in progress per Benito, 07/31/2026)' },
     { id: 'ein', label: 'Federal Tax ID (EIN)', value: '83-1376075' },
-    { id: 'address', label: 'Business Address (Mailing)', value: '184 E Liberty St, Hernando, FL 34442' },
+    { id: 'address', label: 'Correspondence Address (Westbridge)', value: '1015 Villa Circle, Boynton Beach, FL 33435' },
     { id: 'address2', label: 'Principal Address (Sunbiz)', value: '1055 Cypress Fox Blvd, Davenport, FL 33897' },
+    { id: 'address3', label: 'Mailing Address (Sunbiz)', value: '184 E Liberty St, Hernando, FL 34442' },
     { id: 'phone', label: 'Business Phone', value: '561-445-6590' },
     { id: 'email', label: 'Business Email', value: 'info@wbdfl.com' },
     { id: 'website', label: 'Website', value: 'westbridgedemolition.com' },
-    { id: 'yearsinbiz', label: 'Years in Business', value: 'Over 10 years' },
+    { id: 'yearsinbiz', label: 'Years in Business', value: '8 years (per Sunbiz — registered 07/23/2018)' },
     { id: 'qualifyingagent', label: 'Qualifying Agent / Licensee', value: 'Benito De Jesus' },
     { id: 'registeredagent', label: 'Registered Agent', value: 'Benito De Jesus — 1055 Cypress Fox Blvd, Davenport, FL 33897' },
     { id: 'entitydoc', label: 'FL Entity Document #', value: 'L18000177059' },
     { id: 'glcarrier', label: 'General Liability Carrier', value: 'Builders Insurance Group (NAIC C00056)' },
     { id: 'glpolicy', label: 'GL Policy # / Limits', value: 'GLX-0377299-03 — $1M each occurrence / $2M aggregate (06/25/2026–06/25/2027)' },
-    { id: 'autocarrier', label: 'Auto Liability Carrier', value: 'NOT CURRENTLY COVERED — pending Vladimir\'s decision' },
+    { id: 'autocarrier', label: 'Auto Liability Carrier', value: 'NOT on current policy (06/25/2026-27) — WAS covered last term ($1M CSL under GLP-0377299-01, 06/25/2025-26). Appears dropped at renewal — confirm with Vladimir/broker.' },
     { id: 'wccarrier', label: 'Workers Comp Carrier / Policy', value: 'American Builders Insurance Company — WCV-0377467-03 ($500K/$500K/$500K)' },
     { id: 'broker', label: 'Insurance Broker', value: 'King Risk Partners, LLC — Milan Puskar, (888) 377-0420, milan.puskar@king-insurance.com' },
     { id: 'bonding', label: 'Bonding Capacity', value: '' },
@@ -1135,6 +1152,107 @@ document.getElementById('closePlatformBtn').addEventListener('click', () => {
 });
 document.getElementById('platformOverlay').addEventListener('click', (e) => {
   if (e.target.id === 'platformOverlay') document.getElementById('platformOverlay').classList.remove('open');
+});
+
+/* ---------- Company standard documents (W-9, License, COI) — shared, upload once ---------- */
+const COMPANY_DOCS_KEY = 'westbridge-company-documents';
+function defaultCompanyDocs(){
+  return {
+    w9: null,
+    license: null,
+    coi: null,
+    brochure: null
+  };
+}
+let companyDocsData = null;
+
+async function loadCompanyDocs(){
+  try {
+    const res = await storage.get(COMPANY_DOCS_KEY, true);
+    if (res && res.value) return JSON.parse(res.value);
+  } catch (e) { /* none saved yet */ }
+  return defaultCompanyDocs();
+}
+async function saveCompanyDocs(){
+  try { await storage.set(COMPANY_DOCS_KEY, JSON.stringify(companyDocsData), true); }
+  catch (e) { console.error('Could not save company documents', e); }
+}
+
+const COMPANY_DOC_LABELS = {
+  w9: { title: 'W-9', hint: 'IRS Form W-9 for By Other Construction, LLC' },
+  license: { title: 'Contractor License', hint: 'DBPR license certificate — CBC1265846' },
+  coi: { title: 'Certificate of Insurance (COI)', hint: 'Most recent COI — check with the broker before reusing for a new GC' },
+  brochure: { title: 'Company Brochure', hint: 'Marketing/company profile — useful for forms asking for a company overview or capability statement' }
+};
+
+function renderCompanyDocs(){
+  const box = document.getElementById('companyDocsBox');
+  box.innerHTML = '';
+  Object.keys(COMPANY_DOC_LABELS).forEach(key => {
+    const info = COMPANY_DOC_LABELS[key];
+    const doc = companyDocsData[key];
+    const wrap = document.createElement('div');
+    wrap.className = 'file-upload-box';
+    wrap.style.marginBottom = '14px';
+    if (doc) wrap.classList.add('has-file');
+
+    wrap.innerHTML = `
+      <div class="section-title" style="margin-top:0;">${escapeHtml(info.title)}</div>
+      ${doc ? `
+        <div class="file-current" style="display:flex;">
+          <span class="file-name">${escapeHtml(doc.name)}</span>
+          <div class="file-current-actions">
+            <a href="${doc.dataUrl}" target="_blank" class="file-view-link">View</a>
+            <button class="file-remove-btn" data-key="${key}">Remove</button>
+          </div>
+        </div>
+      ` : `
+        <label class="file-input-label" for="companyDocInput-${key}">📎 Upload ${escapeHtml(info.title)}</label>
+        <input type="file" id="companyDocInput-${key}" data-key="${key}" accept=".pdf,.doc,.docx,image/*">
+      `}
+      <div class="file-hint">${escapeHtml(info.hint)}</div>
+    `;
+
+    if (doc) {
+      wrap.querySelector('.file-remove-btn').addEventListener('click', () => {
+        if (!confirm(`Remove the ${info.title}?`)) return;
+        companyDocsData[key] = null;
+        renderCompanyDocs();
+        saveCompanyDocs();
+      });
+    } else {
+      wrap.querySelector('input[type=file]').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > MAX_FILE_BYTES){
+          alert('That file is too large (max ~4 MB).');
+          e.target.value = '';
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          companyDocsData[key] = { name: file.name, dataUrl: reader.result, uploadedAt: new Date().toLocaleDateString() };
+          renderCompanyDocs();
+          saveCompanyDocs();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    box.appendChild(wrap);
+  });
+}
+
+document.getElementById('companyDocsBtn').addEventListener('click', async () => {
+  companyDocsData = await loadCompanyDocs();
+  renderCompanyDocs();
+  document.getElementById('companyDocsOverlay').classList.add('open');
+});
+document.getElementById('closeCompanyDocsBtn').addEventListener('click', () => {
+  document.getElementById('companyDocsOverlay').classList.remove('open');
+});
+document.getElementById('companyDocsOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'companyDocsOverlay') document.getElementById('companyDocsOverlay').classList.remove('open');
 });
 
 /* ---------- Vendor detail panel (in-app editable, separate from the Sheet) ---------- */
