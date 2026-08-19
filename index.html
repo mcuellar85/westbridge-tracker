@@ -506,16 +506,17 @@
 
     <details class="detail-section" open>
       <summary>📎 Upload form/PDF to fill</summary>
+      <div class="cheat-note" style="margin-bottom:8px;">Use this for the actual application form/PDF for this company — whether they emailed it to you, or you had to download it from their website to apply.</div>
       <div class="file-upload-box" id="fileUploadBox">
         <div class="file-current" id="fileCurrentRow" style="display:none;">
           <span class="file-name" id="fileNameText"></span>
           <div class="file-current-actions">
-            <a href="#" target="_blank" class="file-view-link" id="fileViewLink">View file</a>
+            <button class="file-view-link" id="fileViewLink" style="border:none; cursor:pointer;">View file</button>
             <button class="file-view-link" id="fillPdfBtn" style="display:none; border:none; cursor:pointer;">Fill / Edit</button>
             <button class="file-remove-btn" id="fileRemoveBtn">Remove</button>
           </div>
         </div>
-        <label class="file-input-label" for="fileUploadInput" id="fileUploadLabel">📎 Upload the form/PDF to fill</label>
+        <label class="file-input-label" for="fileUploadInput" id="fileUploadLabel">📎 Upload the form/PDF to fill (from email or downloaded from their website)</label>
         <input type="file" id="fileUploadInput" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*">
         <div class="file-hint">Stored with the tracker (up to ~4 MB). Anyone who opens this tracker can view it.</div>
       </div>
@@ -1220,16 +1221,27 @@ function defaultPlatforms(){
     { id: 'buildingconnected', label: 'BuildingConnected', loginUrl: 'https://app.buildingconnected.com/login', username: '', password: '', note: '' },
     { id: 'procore', label: 'Procore', loginUrl: 'https://login.procore.com/', username: '', password: '', note: '' },
     { id: 'isqft', label: 'iSqFt / ConstructConnect', loginUrl: 'https://www.isqft.com/login', username: '', password: '', note: '' },
+    { id: 'compass', label: 'COMPASS (Bespoke Metrics)', loginUrl: 'https://compass.bespokemetrics.com', username: 'maria@wbdfl.com', password: '', note: 'Prequalification & bidding tool. May charge a usage fee. Account confirmed via email verification 04/07/2026 — password not found in email, set it manually here.' },
   ];
 }
 let platformData = null;
 
 async function loadPlatformAccess(){
+  const defaults = defaultPlatforms();
   try {
     const res = await storage.get(PLATFORM_ACCESS_KEY, true);
-    if (res && res.value) return JSON.parse(res.value);
+    if (res && res.value) {
+      const saved = JSON.parse(res.value);
+      // Merge: keep saved values, but add any new default platforms (like Compass) that aren't saved yet.
+      const savedIds = saved.map(p => p.id);
+      const merged = saved.slice();
+      defaults.forEach(d => {
+        if (!savedIds.includes(d.id)) merged.push(d);
+      });
+      return merged;
+    }
   } catch (e) { /* none saved yet */ }
-  return defaultPlatforms();
+  return defaults;
 }
 async function savePlatformAccess(){
   try { await storage.set(PLATFORM_ACCESS_KEY, JSON.stringify(platformData), true); }
@@ -1375,7 +1387,7 @@ function renderCompanyDocs(){
         <div class="file-current" style="display:flex;">
           <span class="file-name">${escapeHtml(doc.name)}</span>
           <div class="file-current-actions">
-            <a href="${doc.dataUrl}" target="_blank" class="file-view-link">View</a>
+            <button class="file-view-link view-doc-btn" data-key="${key}" style="border:none; cursor:pointer;">View</button>
             <button class="file-remove-btn" data-key="${key}">Remove</button>
           </div>
         </div>
@@ -1387,6 +1399,7 @@ function renderCompanyDocs(){
     `;
 
     if (doc) {
+      wrap.querySelector('.view-doc-btn').addEventListener('click', () => openFileSafely(doc.dataUrl, doc.name));
       wrap.querySelector('.file-remove-btn').addEventListener('click', () => {
         if (!confirm(`Remove the ${info.title}?`)) return;
         companyDocsData[key] = null;
@@ -1670,6 +1683,26 @@ document.getElementById('vendorStatusToggle').addEventListener('click', () => {
   queueSave();
 });
 
+// Modern browsers block navigating directly to large data: URLs (shows as "blocked").
+// Converting to a blob: URL first avoids that restriction entirely.
+function openFileSafely(dataUrl, filename){
+  try {
+    const [header, base64] = dataUrl.split(',');
+    const mimeMatch = header.match(/data:(.*?)(;base64)?$/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    const byteChars = atob(base64);
+    const byteNumbers = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+    const blob = new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
+    const blobUrl = URL.createObjectURL(blob);
+    window.open(blobUrl, '_blank');
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+  } catch (e) {
+    console.error('Could not open file:', e);
+    alert('Could not open that file. Try removing and re-uploading it.');
+  }
+}
+
 function fileKindFromDataUrl(dataUrl){
   if (dataUrl.startsWith('data:application/pdf')) return 'pdf';
   if (dataUrl.includes('spreadsheetml') || dataUrl.startsWith('data:application/vnd.ms-excel')) return 'excel';
@@ -1687,7 +1720,8 @@ function renderUploadedFile(){
     row.style.display = 'flex';
     label.style.display = 'none';
     document.getElementById('fileNameText').textContent = currentDetail.uploadedFile.name;
-    document.getElementById('fileViewLink').href = currentDetail.uploadedFile.dataUrl;
+    const viewBtn = document.getElementById('fileViewLink');
+    viewBtn.onclick = () => openFileSafely(currentDetail.uploadedFile.dataUrl, currentDetail.uploadedFile.name);
     const kind = fileKindFromDataUrl(currentDetail.uploadedFile.dataUrl);
     currentDetail.uploadedFile.kind = kind;
     if (kind === 'pdf'){ fillBtn.style.display = 'inline-block'; fillBtn.textContent = 'Fill PDF'; }
@@ -1818,14 +1852,27 @@ function renderEstimatesReceived(){
   currentDetail.estimatesReceived.forEach((est, idx) => {
     const row = document.createElement('div');
     row.className = 'estimate-item';
+    row.style.flexDirection = 'column';
+    row.style.alignItems = 'stretch';
+    const hasRealLink = est.dataUrl && est.dataUrl !== '#';
     row.innerHTML = `
-      <span class="est-name">📥 ${escapeHtml(est.name)}</span>
-      <span class="est-date">${escapeHtml(est.uploadedAt)}</span>
-      <div class="file-current-actions">
-        <a href="${est.dataUrl}" target="_blank" class="file-view-link">View</a>
+      <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+        <span class="est-name">📥 ${escapeHtml(est.name)}</span>
+        <span class="est-date">${escapeHtml(est.uploadedAt)}</span>
+      </div>
+      ${est.source ? `<div style="font-size:11px; color:var(--text-dim); margin-top:2px;">From: <b style="color:var(--text);">${escapeHtml(est.source)}</b></div>` : ''}
+      ${est.description ? `<div class="gm-snippet" style="margin-top:6px;">${escapeHtml(est.description)}</div>` : ''}
+      <div class="file-current-actions" style="margin-top:8px; justify-content:flex-end;">
+        ${hasRealLink ? `<button class="file-view-link view-received-btn" data-idx="${idx}" style="border:none; cursor:pointer;">View</button>` : ''}
         <button class="file-remove-btn" data-idx="${idx}">Remove</button>
       </div>
     `;
+    if (hasRealLink){
+      row.querySelector('.view-received-btn').addEventListener('click', () => {
+        if (est.dataUrl.startsWith('data:')) openFileSafely(est.dataUrl, est.name);
+        else window.open(est.dataUrl, '_blank');
+      });
+    }
     row.querySelector('.file-remove-btn').addEventListener('click', () => {
       if (!confirm('Remove this file?')) return;
       currentDetail.estimatesReceived.splice(idx, 1);
@@ -1901,11 +1948,12 @@ function renderEstimates(highlightIdx){
       <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">Sent by: <b style="color:var(--text);">${escapeHtml(est.sentBy || 'Maria Cuellar (us)')}</b></div>
       <div class="email-body-preview">${escapeHtml(body)}</div>
       <div class="file-current-actions" style="margin-top:8px; justify-content:flex-end;">
-        <a href="${est.dataUrl}" target="_blank" class="file-view-link">View</a>
+        <button class="file-view-link view-sent-btn" data-idx="${idx}" style="border:none; cursor:pointer;">View</button>
         <button class="file-view-link email-est-btn" data-idx="${idx}" style="border:none; cursor:pointer;">✉️ Open in Mail</button>
         <button class="file-remove-btn" data-idx="${idx}">Remove</button>
       </div>
     `;
+    row.querySelector('.view-sent-btn').addEventListener('click', () => openFileSafely(est.dataUrl, est.name));
     row.querySelector('.file-remove-btn').addEventListener('click', () => {
       if (!confirm('Remove this estimate from the record?')) return;
       currentDetail.estimates.splice(idx, 1);
@@ -1928,6 +1976,30 @@ function openEstimateEmailDraft(est){
   alert(`Don't forget: your email app will open, but browsers can't attach files automatically.\n\nAttach this file before sending:\n${est.name}\n\n(Tip: click "View" first to download it if it's not already on your computer.)`);
 
   const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = mailto;
+}
+
+function openEstimateResponseDraft(toEmail, originalSubject){
+  const vendorName = currentVendor ? currentVendor.name : 'this vendor';
+  const subject = `Re: ${originalSubject || 'Estimate Request'}`;
+  const body =
+`Hi,
+
+Thank you for sending this over. We're reviewing it now and will have our estimate back to you shortly.
+
+Please let us know if you need anything else from us in the meantime.
+
+Best regards,
+
+WESTBRIDGE DEMOLITION
+Maria Cuellar
+CLIENT DEVELOPMENT MANAGER
+1015 Villa Circle, Boynton Beach, FL 33435
+O 561-928-8035
+W westbridgedemolition.com`;
+
+  const toParam = toEmail ? encodeURIComponent(toEmail.match(/[\w.+-]+@[\w-]+\.[\w.-]+/)?.[0] || '') : '';
+  const mailto = `mailto:${toParam}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   window.location.href = mailto;
 }
 
@@ -2193,8 +2265,30 @@ async function searchGmailForCurrentVendor(){
         <div class="gm-snippet">${escapeHtml(snippet)}</div>
         ${linksHtml}
         <div class="gm-attachments" id="gm-att-${msg.id}"></div>
+        <div class="gm-est-actions" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
+          <button class="gm-attachment-btn gm-add-received-btn">📥 Add as received estimate</button>
+          <button class="gm-attachment-btn gm-draft-response-btn">✉️ Draft response</button>
+        </div>
         <a href="${permalink}" target="_blank" class="gm-open">Open full thread →</a>
       `;
+
+      card.querySelector('.gm-add-received-btn').addEventListener('click', () => {
+        const label = bestLink || (bestAttachment && bestAttachment.att.filename) || subject;
+        currentDetail.estimatesReceived.push({
+          name: subject || 'Estimate request',
+          dataUrl: bestLink || (attachments[0] ? '' : '#'),
+          uploadedAt: date ? new Date(date).toLocaleDateString() : new Date().toLocaleDateString(),
+          description: (bodyText || snippet).slice(0, 500),
+          source: from
+        });
+        renderEstimatesReceived();
+        queueSave();
+        alert('Added to "Received from them" below, with the email description included.');
+      });
+
+      card.querySelector('.gm-draft-response-btn').addEventListener('click', () => {
+        openEstimateResponseDraft(from, subject);
+      });
 
       if (attachments.length){
         const attBox = card.querySelector(`#gm-att-${msg.id}`);
