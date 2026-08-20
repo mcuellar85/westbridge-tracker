@@ -2409,6 +2409,8 @@ async function searchGmailForCurrentVendor(){
         ? `<div class="gm-links"><b>🔗 Links in this email:</b><br>${links.map(l => `<a href="${escapeHtml(l)}" target="_blank">${escapeHtml(l.length > 60 ? l.slice(0, 60) + '…' : l)}</a>`).join('<br>')}</div>`
         : '';
 
+      const fullText = bodyText && bodyText.trim() ? bodyText.trim() : snippet;
+
       const card = document.createElement('div');
       card.className = 'gmail-msg-card';
       card.innerHTML = `
@@ -2417,7 +2419,7 @@ async function searchGmailForCurrentVendor(){
           <span class="gm-date">${escapeHtml(date ? new Date(date).toLocaleDateString() : '')}</span>
         </div>
         <div class="gm-subject">${escapeHtml(subject)}</div>
-        <div class="gm-snippet">${escapeHtml(snippet)}</div>
+        <div class="email-body-preview" style="max-height:220px;">${escapeHtml(fullText)}</div>
         ${linksHtml}
         <div class="gm-attachments" id="gm-att-${msg.id}"></div>
         <div class="gm-est-actions" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
