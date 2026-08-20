@@ -1895,6 +1895,7 @@ function renderEstimatesReceived(){
       <div class="email-body-preview">${escapeHtml(responseBody)}</div>
       <div class="file-current-actions" style="margin-top:8px; justify-content:flex-end;">
         ${hasRealLink ? `<button class="file-view-link view-received-btn" data-idx="${idx}" style="border:none; cursor:pointer;">${est.dataUrl.startsWith('data:') ? '📄 View file' : '🔗 Open link'}</button>` : ''}
+        ${est.originalEmailLink ? `<button class="file-view-link view-original-btn" data-idx="${idx}" style="border:none; cursor:pointer;">📧 View original email</button>` : ''}
         <button class="file-view-link respond-received-btn" data-idx="${idx}" style="border:none; cursor:pointer;">✉️ Open in Gmail</button>
         <button class="file-remove-btn" data-idx="${idx}">Remove</button>
       </div>
@@ -1902,6 +1903,12 @@ function renderEstimatesReceived(){
     row.querySelector('.respond-received-btn').addEventListener('click', () => {
       openEstimateResponseDraft(est.source, est.name);
     });
+    if (est.originalEmailLink){
+      row.querySelector('.view-original-btn').addEventListener('click', () => {
+        alert('If you are viewing this as Vladimir or the estimator: first switch to maria@wbdfl.com using the profile picture in the top-right corner of Gmail, THEN click OK — otherwise this email may not be found.');
+        window.open(est.originalEmailLink, '_blank');
+      });
+    }
     if (hasRealLink){
       row.querySelector('.view-received-btn').addEventListener('click', () => {
         if (est.dataUrl.startsWith('data:')) openFileSafely(est.dataUrl, est.name);
@@ -2332,7 +2339,7 @@ async function searchGmailForCurrentVendor(){
         (links.length || attachments.length) &&
         estimateRequestPattern.test(subject + ' ' + snippet + ' ' + bodyText)
       ){
-        autoAddCandidates.push({ msg, from, subject, date, snippet, bodyText, links, attachments });
+        autoAddCandidates.push({ msg, from, subject, date, snippet, bodyText, links, attachments, permalink });
       }
 
       const linksHtml = links.length
@@ -2364,7 +2371,8 @@ async function searchGmailForCurrentVendor(){
           uploadedAt: date ? new Date(date).toLocaleDateString() : new Date().toLocaleDateString(),
           description: (bodyText || snippet).slice(0, 800),
           source: from,
-          sourceMsgId: msg.id
+          sourceMsgId: msg.id,
+          originalEmailLink: permalink
         };
         if (!links.length && attachments.length){
           // No link — fetch the real attachment content so "View" actually works, not just a placeholder.
@@ -2437,7 +2445,8 @@ async function searchGmailForCurrentVendor(){
           uploadedAt: cand.date ? new Date(cand.date).toLocaleDateString() : new Date().toLocaleDateString(),
           description: (cand.bodyText || cand.snippet).slice(0, 800),
           source: cand.from,
-          sourceMsgId: cand.msg.id
+          sourceMsgId: cand.msg.id,
+          originalEmailLink: cand.permalink
         };
         if (!cand.links.length && cand.attachments.length){
           try {
