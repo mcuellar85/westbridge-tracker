@@ -772,7 +772,7 @@ const EDIT_GID = "0";
 /* ---------- Real shared storage (backed by your Google Sheet via Apps Script) ----------
    PASTE your deployed Web App URL below (see Tracker-Storage-Backend.gs + its setup guide).
    Until you paste a real URL here, saving will silently fail and nothing will persist. */
-const REMOTE_STORAGE_URL = "https://script.google.com/macros/s/AKfycbwaU38SaPCJEU7zhEAG6HYylY-MMsIJFeUR37gVrGdCUUp98wTHFgpfMQQTmZqmLcGB/exec";
+const REMOTE_STORAGE_URL = "https://script.google.com/macros/s/AKfycbwWnLD5oTTUBoN1q71zPt0YEQo0mit1nHOn5CmmhBgejRC--82eZoIxQOnle_i97t3N/exec";
 
 const storage = {
   async get(key, _shared){
@@ -1426,7 +1426,10 @@ function renderCompanyDocs(){
     `;
 
     if (doc) {
-      wrap.querySelector('.view-doc-btn').addEventListener('click', () => openFileSafely(doc.dataUrl, doc.name));
+      wrap.querySelector('.view-doc-btn').addEventListener('click', () => {
+        if (doc.dataUrl.startsWith('data:')) openFileSafely(doc.dataUrl, doc.name);
+        else window.open(doc.dataUrl, '_blank');
+      });
       wrap.querySelector('.file-remove-btn').addEventListener('click', () => {
         if (!confirm(`Remove the ${info.title}?`)) return;
         companyDocsData[key] = null;
@@ -1434,21 +1437,24 @@ function renderCompanyDocs(){
         saveCompanyDocs();
       });
     } else {
-      wrap.querySelector('input[type=file]').addEventListener('change', (e) => {
+      wrap.querySelector('input[type=file]').addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
         if (file.size > MAX_FILE_BYTES){
-          alert('That file is too large (max ~4 MB).');
+          alert('That file is too large (max ~20 MB).');
           e.target.value = '';
           return;
         }
-        const reader = new FileReader();
-        reader.onload = () => {
-          companyDocsData[key] = { name: file.name, dataUrl: reader.result, uploadedAt: new Date().toLocaleDateString() };
+        try {
+          const url = await uploadFileToDrive(file);
+          companyDocsData[key] = { name: file.name, dataUrl: url, uploadedAt: new Date().toLocaleDateString() };
           renderCompanyDocs();
           saveCompanyDocs();
-        };
-        reader.readAsDataURL(file);
+        } catch (err) {
+          console.error(err);
+          alert('Could not upload that file. Make sure the storage backend is connected, then try again.');
+          e.target.value = '';
+        }
       });
     }
 
@@ -1748,7 +1754,11 @@ function renderUploadedFile(){
     label.style.display = 'none';
     document.getElementById('fileNameText').textContent = currentDetail.uploadedFile.name;
     const viewBtn = document.getElementById('fileViewLink');
-    viewBtn.onclick = () => openFileSafely(currentDetail.uploadedFile.dataUrl, currentDetail.uploadedFile.name);
+    viewBtn.onclick = () => {
+      const url = currentDetail.uploadedFile.dataUrl;
+      if (url.startsWith('data:')) openFileSafely(url, currentDetail.uploadedFile.name);
+      else window.open(url, '_blank');
+    };
     const kind = fileKindFromDataUrl(currentDetail.uploadedFile.dataUrl);
     currentDetail.uploadedFile.kind = kind;
     if (kind === 'pdf'){ fillBtn.style.display = 'inline-block'; fillBtn.textContent = 'Fill PDF'; }
@@ -1792,24 +1802,53 @@ document.getElementById('bidCheckbox').addEventListener('change', () => {
   renderBidCheckbox();
   queueSave();
 });
-const MAX_FILE_BYTES = 4 * 1024 * 1024; // ~4MB, storage values must stay under 5MB
-document.getElementById('fileUploadInput').addEventListener('change', (e) => {
+const MAX_FILE_BYTES = 20 * 1024 * 1024; // ~20MB — files now go to Google Drive, not the Sheet, so this is much more generous
+
+// Uploads now go through Google Drive (via the Apps Script backend) instead of being
+// embedded as base64 directly in the Sheet — Sheets cells cap out at 50,000 characters,
+// which most real files (even smaller PDFs) blow past instantly.
+async function uploadFileToDrive(file){
+  if (!REMOTE_STORAGE_URL || REMOTE_STORAGE_URL.startsWith('PASTE_')) {
+    throw new Error('Storage backend not configured yet.');
+  }
+  const base64Data = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = () => reject(new Error('Could not read file'));
+    reader.readAsDataURL(file);
+  });
+  const res = await fetch(REMOTE_STORAGE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      action: 'uploadFile',
+      filename: file.name,
+      mimeType: file.type || 'application/octet-stream',
+      base64Data
+    })
+  });
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Upload failed');
+  return data.url; // small Drive link — this is what gets stored, not the file itself
+}
+document.getElementById('fileUploadInput').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   if (file.size > MAX_FILE_BYTES){
-    alert('That file is too large (max ~4 MB). Try a smaller file or compress the PDF.');
+    alert('That file is too large (max ~20 MB). Try a smaller file or compress the PDF.');
     e.target.value = '';
     return;
   }
-  const reader = new FileReader();
-  reader.onload = () => {
-    currentDetail.uploadedFile = { name: file.name, dataUrl: reader.result, uploadedAt: new Date().toISOString() };
+  try {
+    const url = await uploadFileToDrive(file);
+    currentDetail.uploadedFile = { name: file.name, dataUrl: url, uploadedAt: new Date().toISOString() };
     renderUploadedFile();
     queueSave();
-    e.target.value = '';
-  };
-  reader.onerror = () => alert('Could not read that file. Please try again.');
-  reader.readAsDataURL(file);
+  } catch (err) {
+    console.error(err);
+    alert('Could not upload that file. Make sure the storage backend is connected, then try again.');
+  }
+  e.target.value = '';
 });
 document.getElementById('fileRemoveBtn').addEventListener('click', () => {
   if (!confirm('Remove the uploaded file for this vendor?')) return;
@@ -1925,19 +1964,19 @@ function renderEstimatesReceived(){
   });
 }
 
-document.getElementById('estimateReceivedInput').addEventListener('change', (e) => {
+document.getElementById('estimateReceivedInput').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   if (file.size > MAX_FILE_BYTES){
-    alert('That file is too large (max ~4 MB). Try a smaller file or compress it.');
+    alert('That file is too large (max ~20 MB). Try a smaller file or compress it.');
     e.target.value = '';
     return;
   }
-  const reader = new FileReader();
-  reader.onload = () => {
+  try {
+    const url = await uploadFileToDrive(file);
     currentDetail.estimatesReceived.push({
       name: file.name,
-      dataUrl: reader.result,
+      dataUrl: url,
       uploadedAt: new Date().toLocaleDateString()
     });
     renderEstimatesReceived();
@@ -1945,10 +1984,11 @@ document.getElementById('estimateReceivedInput').addEventListener('change', (e) 
     const flash = document.getElementById('estimateSavedFlash');
     flash.classList.add('show');
     setTimeout(() => flash.classList.remove('show'), 1200);
-    e.target.value = '';
-  };
-  reader.onerror = () => alert('Could not read that file. Please try again.');
-  reader.readAsDataURL(file);
+  } catch (err) {
+    console.error(err);
+    alert('Could not upload that file. Make sure the storage backend is connected, then try again.');
+  }
+  e.target.value = '';
 });
 
 function buildEstimateEmailBody(vendorName){
@@ -2061,19 +2101,19 @@ function openEstimateResponseDraft(toEmail, originalSubject){
   openMailtoLink(toEmail, subject, body);
 }
 
-document.getElementById('estimateUploadInput').addEventListener('change', (e) => {
+document.getElementById('estimateUploadInput').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   if (file.size > MAX_FILE_BYTES){
-    alert('That file is too large (max ~4 MB). Try a smaller file or compress it.');
+    alert('That file is too large (max ~20 MB). Try a smaller file or compress it.');
     e.target.value = '';
     return;
   }
-  const reader = new FileReader();
-  reader.onload = () => {
+  try {
+    const url = await uploadFileToDrive(file);
     currentDetail.estimates.push({
       name: file.name,
-      dataUrl: reader.result,
+      dataUrl: url,
       uploadedAt: new Date().toLocaleDateString(),
       sentBy: 'Maria Cuellar (us)'
     });
@@ -2082,10 +2122,11 @@ document.getElementById('estimateUploadInput').addEventListener('change', (e) =>
     const flash = document.getElementById('estimateSavedFlash');
     flash.classList.add('show');
     setTimeout(() => flash.classList.remove('show'), 1200);
-    e.target.value = '';
-  };
-  reader.onerror = () => alert('Could not read that file. Please try again.');
-  reader.readAsDataURL(file);
+  } catch (err) {
+    console.error(err);
+    alert('Could not upload that file. Make sure the storage backend is connected, then try again.');
+  }
+  e.target.value = '';
 });
 
 /* ---------- Email correspondence log ---------- */
@@ -2577,7 +2618,7 @@ function renderEmailLog(){
     const row = document.createElement('div');
     row.className = 'email-log-item';
     const attachmentHtml = entry.file
-      ? `<a href="${entry.file.dataUrl}" target="_blank" class="log-attachment">📎 ${escapeHtml(entry.file.name)}</a>`
+      ? `<button class="log-attachment log-att-btn" style="background:none; border:none; cursor:pointer; padding:0;">📎 ${escapeHtml(entry.file.name)}</button>`
       : '';
     row.innerHTML = `
       <div>
@@ -2588,6 +2629,12 @@ function renderEmailLog(){
       </div>
       <button class="ci-remove" title="Remove entry">✕</button>
     `;
+    if (entry.file){
+      row.querySelector('.log-att-btn').addEventListener('click', () => {
+        if (entry.file.dataUrl.startsWith('data:')) openFileSafely(entry.file.dataUrl, entry.file.name);
+        else window.open(entry.file.dataUrl, '_blank');
+      });
+    }
     row.querySelector('.ci-remove').addEventListener('click', () => {
       currentDetail.emailLog.splice(realIdx, 1);
       renderEmailLog();
@@ -2630,15 +2677,16 @@ document.getElementById('addEmailLogBtn').addEventListener('click', () => {
 
   if (hasFile && file){
     if (file.size > MAX_FILE_BYTES){
-      alert('That file is too large (max ~4 MB).');
+      alert('That file is too large (max ~20 MB).');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      entry.file = { name: file.name, dataUrl: reader.result };
+    uploadFileToDrive(file).then(url => {
+      entry.file = { name: file.name, dataUrl: url };
       finish();
-    };
-    reader.readAsDataURL(file);
+    }).catch(err => {
+      console.error(err);
+      alert('Could not upload that file. Make sure the storage backend is connected, then try again.');
+    });
   } else {
     finish();
   }
@@ -2652,6 +2700,23 @@ function dataUrlToBytes(dataUrl){
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
 }
+
+// Files saved via Drive only have a link stored locally — this pulls the real bytes
+// back through the Apps Script backend (avoids browser CORS issues with Drive directly).
+async function getFileBytes(fileUrlOrDataUrl){
+  if (fileUrlOrDataUrl.startsWith('data:')) return dataUrlToBytes(fileUrlOrDataUrl);
+
+  const idMatch = fileUrlOrDataUrl.match(/[?&]id=([^&]+)/);
+  if (!idMatch) throw new Error('Could not determine file ID from link.');
+  const res = await fetch(`${REMOTE_STORAGE_URL}?fileId=${encodeURIComponent(idMatch[1])}`);
+  const data = await res.json();
+  if (!data.found) throw new Error(data.error || 'File not found in Drive.');
+  const binary = atob(data.base64Data);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
 function bytesToDataUrl(bytes, mime){
   let binary = '';
   const chunk = 0x8000;
@@ -2686,7 +2751,7 @@ async function openPdfFiller(){
   }
 
   try {
-    const bytes = dataUrlToBytes(currentDetail.uploadedFile.dataUrl);
+    const bytes = await getFileBytes(currentDetail.uploadedFile.dataUrl);
     const pdfDoc = await PDFLib.PDFDocument.load(bytes);
     const form = pdfDoc.getForm();
     const fields = form.getFields();
@@ -2803,7 +2868,7 @@ async function openExcelEditor(){
   }
 
   try {
-    const bytes = dataUrlToBytes(currentDetail.uploadedFile.dataUrl);
+    const bytes = await getFileBytes(currentDetail.uploadedFile.dataUrl);
     const workbook = XLSX.read(bytes, { type: 'array' });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
@@ -2886,7 +2951,7 @@ async function openWordViewer(){
   }
 
   try {
-    const bytes = dataUrlToBytes(currentDetail.uploadedFile.dataUrl);
+    const bytes = await getFileBytes(currentDetail.uploadedFile.dataUrl);
     const result = await mammoth.convertToHtml({ arrayBuffer: bytes.buffer });
     box.innerHTML = result.value;
     statusEl.textContent = 'Read-only preview:';
