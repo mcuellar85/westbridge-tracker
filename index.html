@@ -783,7 +783,7 @@ const EDIT_GID = "0";
 /* ---------- Real shared storage (backed by your Google Sheet via Apps Script) ----------
    PASTE your deployed Web App URL below (see Tracker-Storage-Backend.gs + its setup guide).
    Until you paste a real URL here, saving will silently fail and nothing will persist. */
-const REMOTE_STORAGE_URL = "https://script.google.com/macros/s/AKfycbwWnLD5oTTUBoN1q71zPt0YEQo0mit1nHOn5CmmhBgejRC--82eZoIxQOnle_i97t3N/exec";
+const REMOTE_STORAGE_URL = "https://script.google.com/macros/s/AKfycbxvvMPexTW3kW1E2iRgOLhc4PiBOJrho5kMwUEq_0xMbZuLVdpeDmSi9-OMGkiqKCNm/exec";
 
 const storage = {
   async get(key, _shared){
@@ -1932,20 +1932,15 @@ function renderEstimatesReceived(){
     row.style.flexDirection = 'column';
     row.style.alignItems = 'stretch';
     const hasRealLink = est.dataUrl && est.dataUrl !== '#';
-    const projectName = extractProjectName(est.name);
-    const responseBody = buildEstimateResponseBody(projectName);
     row.innerHTML = `
       <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
         <span class="est-name">📥 ${escapeHtml(est.name)}</span>
         <span class="est-date">${escapeHtml(est.uploadedAt)}</span>
       </div>
       ${est.source ? `<div style="font-size:11px; color:var(--text-dim); margin-top:2px;">From: <b style="color:var(--text);">${escapeHtml(est.source)}</b></div>` : ''}
-      ${est.description ? `<div class="gm-snippet" style="margin-top:6px;">${escapeHtml(est.description)}</div>` : ''}
-      <div class="section-title" style="font-size:10.5px; margin:10px 0 4px;">✉️ Ready-to-send response (edit if needed)</div>
-      <div class="email-body-preview">${escapeHtml(responseBody)}</div>
       <div class="file-current-actions" style="margin-top:8px; justify-content:flex-end;">
         ${hasRealLink ? `<button class="file-view-link view-received-btn" data-idx="${idx}" style="border:none; cursor:pointer;">${est.dataUrl.startsWith('data:') ? '📄 View file' : '🔗 Open link'}</button>` : ''}
-        ${est.originalEmailLink ? `<button class="file-view-link view-original-btn" data-idx="${idx}" style="border:none; cursor:pointer;">📧 View original email</button>` : ''}
+        ${est.originalEmailLink ? `<a href="${escapeHtml(est.originalEmailLink)}" target="_blank" class="file-view-link" style="text-decoration:none;">📧 View original email</a>` : ''}
         <button class="file-view-link respond-received-btn" data-idx="${idx}" style="border:none; cursor:pointer;">✉️ Open in Gmail</button>
         <button class="file-remove-btn" data-idx="${idx}">Remove</button>
       </div>
@@ -1953,12 +1948,6 @@ function renderEstimatesReceived(){
     row.querySelector('.respond-received-btn').addEventListener('click', () => {
       openEstimateResponseDraft(est.source, est.name);
     });
-    if (est.originalEmailLink){
-      row.querySelector('.view-original-btn').addEventListener('click', () => {
-        alert('If you are viewing this as Vladimir or the estimator: first switch to maria@wbdfl.com using the profile picture in the top-right corner of Gmail, THEN click OK — otherwise this email may not be found.');
-        window.open(est.originalEmailLink, '_blank');
-      });
-    }
     if (hasRealLink){
       row.querySelector('.view-received-btn').addEventListener('click', () => {
         if (est.dataUrl.startsWith('data:')) openFileSafely(est.dataUrl, est.name);
@@ -2071,6 +2060,36 @@ function openEstimateEmailDraft(est){
   openMailtoLink(null, subject, body);
 }
 
+// Some platforms (iSqFt in particular) render fields like "Bid Due Date" as a picture
+// instead of real text — a browser can display the picture, but no code can "read" it
+// as text without OCR. This finds those specific tracking images in the raw HTML.
+function findDateImagesInHtml(rawHtml){
+  if (!rawHtml) return [];
+  const imgPattern = /<img[^>]+src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/gi;
+  const found = [];
+  let m;
+  while ((m = imgPattern.exec(rawHtml)) !== null){
+    const src = m[1];
+    const alt = m[2];
+    if (/date|time/i.test(alt)) found.push({ src, alt });
+  }
+  return found;
+}
+
+async function ocrImageViaBackend(imageUrl){
+  if (!REMOTE_STORAGE_URL || REMOTE_STORAGE_URL.startsWith('PASTE_')) {
+    throw new Error('Storage backend not configured yet.');
+  }
+  const res = await fetch(REMOTE_STORAGE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'ocrImage', imageUrl })
+  });
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'OCR failed');
+  return data.text;
+}
+
 function extractDueDate(text){
   const monthNames = '(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)';
   const numericDate = '\\d{1,2}[\\/\\-]\\d{1,2}[\\/\\-]\\d{2,4}';
@@ -2083,8 +2102,8 @@ function extractDueDate(text){
     'needed\\s*by|required\\s*by|close\\s*of\\s*business\\s*(?:on)?)';
 
   const patterns = [
-    new RegExp(triggers + '\\D{0,12}(' + numericDate + ')', 'i'),
-    new RegExp(triggers + '\\D{0,15}(' + monthDate + ')', 'i')
+    new RegExp(triggers + '\\D{0,30}(' + numericDate + ')', 'i'),
+    new RegExp(triggers + '\\D{0,30}(' + monthDate + ')', 'i')
   ];
   for (const p of patterns){
     const m = text.match(p);
@@ -2397,6 +2416,16 @@ async function saveGmailAttachmentToVendorForm(messageId, att){
   }
 }
 
+function renderGmailDeadlineSuggestion(bestDueDate){
+  const gdBox = document.getElementById('gmailDeadlineSuggestionBox');
+  gdBox.innerHTML = `<div class="gm-suggestion">📅 Found a due date in these emails: <b>${escapeHtml(bestDueDate)}</b> <button class="cheat-copy-btn" id="useDetectedDeadline">Use this</button></div>`;
+  gdBox.querySelector('#useDetectedDeadline').addEventListener('click', () => {
+    currentDetail.gmailDetectedDeadline = bestDueDate;
+    queueSave();
+    renderDeadlineDisplay(currentVendor);
+  });
+}
+
 async function searchGmailForCurrentVendor(){
   const term = document.getElementById('gmailSearchTermInput').value.trim() || (currentVendor ? currentVendor.name : '');
   if (!term || !gmailAccessToken) return;
@@ -2450,6 +2479,7 @@ async function searchGmailForCurrentVendor(){
     const alreadyPending = new Set((currentDetail.estimatesPending || []).map(p => p.sourceMsgId).filter(Boolean));
     const autoAddCandidates = [];
     const autoDueDateCandidates = [];
+    const ocrCandidates = []; // messages with no text-based due date but a date-hiding image found
 
     details.forEach(msg => {
       const headers = (msg.payload && msg.payload.headers) || [];
@@ -2473,6 +2503,11 @@ async function searchGmailForCurrentVendor(){
         if (!alreadyPending.has(msg.id)){
           autoDueDateCandidates.push({ msgId: msg.id, projectName: extractProjectName(subject), due: dueDateFound });
         }
+      } else if (!alreadyPending.has(msg.id) && estimateRequestPattern.test(subject + ' ' + snippet + ' ' + bodyText)){
+        const dateImages = findDateImagesInHtml(window.gmailRawHtmlCache[msg.id]);
+        if (dateImages.length){
+          ocrCandidates.push({ msgId: msg.id, projectName: extractProjectName(subject), imageUrl: dateImages[0].src });
+        }
       }
       if (!bestSenderEmail && !automatedSenderPattern.test(from)){
         const emailMatch = from.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
@@ -2494,8 +2529,6 @@ async function searchGmailForCurrentVendor(){
         ? `<div class="gm-links"><b>🔗 Links in this email:</b><br>${links.map(l => `<a href="${escapeHtml(l)}" target="_blank">${escapeHtml(l.length > 60 ? l.slice(0, 60) + '…' : l)}</a>`).join('<br>')}</div>`
         : '';
 
-      const fullText = bodyText && bodyText.trim() ? bodyText.trim() : snippet;
-
       const card = document.createElement('div');
       card.className = 'gmail-msg-card';
       card.innerHTML = `
@@ -2504,9 +2537,10 @@ async function searchGmailForCurrentVendor(){
           <span class="gm-date">${escapeHtml(date ? new Date(date).toLocaleDateString() : '')}</span>
         </div>
         <div class="gm-subject">${escapeHtml(subject)}</div>
-        <a href="${permalink}" target="_blank" class="gm-open" style="display:inline-block; margin:4px 8px 8px 0;">🔗 Open this exact email in Gmail (new tab) →</a>
-        <button class="gm-attachment-btn view-original-formatted-btn" data-msgid="${msg.id}" data-subject="${escapeHtml(subject)}" style="margin-bottom:8px;">🖼️ View original formatting</button>
-        <div class="email-body-preview" style="max-height:280px;">${escapeHtml(fullText)}</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin:6px 0;">
+          <a href="${permalink}" target="_blank" class="gm-attachment-btn" style="text-decoration:none; display:inline-block;">🔗 Open in Gmail →</a>
+          <button class="gm-attachment-btn view-original-formatted-btn" data-msgid="${msg.id}" data-subject="${escapeHtml(subject)}">🖼️ View original</button>
+        </div>
         ${linksHtml}
         <div class="gm-attachments" id="gm-att-${msg.id}"></div>
         <div class="gm-est-actions" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
@@ -2591,6 +2625,38 @@ async function searchGmailForCurrentVendor(){
       queueSave();
     }
 
+    // OCR any date-hiding images (like iSqFt's "Bid Due Date" picture) — capped at 3 per
+    // search to keep this reasonably fast, since each OCR call takes a few seconds.
+    if (ocrCandidates.length){
+      const notice = document.createElement('div');
+      notice.className = 'gm-suggestion';
+      notice.id = 'ocrProgressNotice';
+      notice.textContent = '🔍 Reading a date from an image in one of these emails (this can take a few seconds)…';
+      box.insertBefore(notice, box.firstChild);
+
+      for (const cand of ocrCandidates.slice(0, 3)){
+        try {
+          const ocrText = await ocrImageViaBackend(cand.imageUrl);
+          const ocrDate = extractDueDate(ocrText) || (ocrText.match(/\d{1,2}\/\d{1,2}\/\d{2,4}/) || [])[0] || (/[A-Za-z]+\s+\d{1,2},?\s*\d{4}/.exec(ocrText) || [])[0];
+          if (ocrDate){
+            currentDetail.estimatesPending.push({
+              label: cand.projectName,
+              due: ocrDate,
+              sourceMsgId: cand.msgId
+            });
+            if (!bestDueDate) bestDueDate = ocrDate;
+          }
+        } catch (err) {
+          console.error('OCR failed for', cand.msgId, err);
+        }
+      }
+      renderEstimatesPending();
+      queueSave();
+      const noticeEl = document.getElementById('ocrProgressNotice');
+      if (noticeEl) noticeEl.remove();
+      if (bestDueDate) renderGmailDeadlineSuggestion(bestDueDate);
+    }
+
     // Automatically add detected estimate/bid requests to "Received from them" — no manual click needed.
     if (autoAddCandidates.length){
       for (const cand of autoAddCandidates){
@@ -2659,15 +2725,7 @@ async function searchGmailForCurrentVendor(){
       }
     }
 
-    if (bestDueDate){
-      const gdBox = document.getElementById('gmailDeadlineSuggestionBox');
-      gdBox.innerHTML = `<div class="gm-suggestion">📅 Found a due date in these emails: <b>${escapeHtml(bestDueDate)}</b> <button class="cheat-copy-btn" id="useDetectedDeadline">Use this</button></div>`;
-      gdBox.querySelector('#useDetectedDeadline').addEventListener('click', () => {
-        currentDetail.gmailDetectedDeadline = bestDueDate;
-        queueSave();
-        renderDeadlineDisplay(currentVendor);
-      });
-    }
+    if (bestDueDate) renderGmailDeadlineSuggestion(bestDueDate);
 
     if (anyAcceptancePhrase && !currentDetail.onBiddingList){
       const acceptBox = document.createElement('div');
