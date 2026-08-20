@@ -757,6 +757,17 @@
   </div>
 </div>
 
+<!-- Shows the email as it actually looked (real formatting), instead of the flattened text preview -->
+<div class="overlay" id="rawEmailOverlay">
+  <div class="modal" style="max-width:800px; background:#fff; padding:0; overflow:hidden;">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 18px; background:var(--panel); border-bottom:1px solid var(--line);">
+      <b style="color:var(--text); font-size:14px;" id="rawEmailSubjectLabel">Original email</b>
+      <button class="close-x" id="closeRawEmailBtn">✕</button>
+    </div>
+    <iframe id="rawEmailFrame" sandbox="" style="width:100%; height:70vh; border:none; background:#fff;"></iframe>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -2198,6 +2209,53 @@ document.getElementById('refreshGmailBtn').addEventListener('click', () => {
   searchGmailForCurrentVendor();
 });
 
+function openRawEmailViewer(msgId, subject){
+  const html = (window.gmailRawHtmlCache && window.gmailRawHtmlCache[msgId]) || '';
+  document.getElementById('rawEmailSubjectLabel').textContent = subject || 'Original email';
+  const frame = document.getElementById('rawEmailFrame');
+  if (html){
+    frame.srcdoc = `<base target="_blank"><body style="font-family:Arial,sans-serif; padding:16px; color:#111;">${html}</body>`;
+  } else {
+    frame.srcdoc = `<body style="font-family:Arial,sans-serif; padding:16px; color:#555;">No formatted (HTML) version available for this email — it may be plain text only. Use "Open this exact email in Gmail" instead.</body>`;
+  }
+  document.getElementById('rawEmailOverlay').classList.add('open');
+}
+document.getElementById('closeRawEmailBtn').addEventListener('click', () => {
+  document.getElementById('rawEmailOverlay').classList.remove('open');
+  document.getElementById('rawEmailFrame').srcdoc = '';
+});
+document.getElementById('rawEmailOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'rawEmailOverlay'){
+    document.getElementById('rawEmailOverlay').classList.remove('open');
+    document.getElementById('rawEmailFrame').srcdoc = '';
+  }
+});
+
+function extractGmailRawHtml(payload){
+  function decode(data){
+    if (!data) return '';
+    try {
+      const b64 = data.replace(/-/g, '+').replace(/_/g, '/');
+      return decodeURIComponent(escape(atob(b64)));
+    } catch (e) { return ''; }
+  }
+  function walk(part){
+    if (!part) return '';
+    if (part.mimeType === 'text/html' && part.body && part.body.data){
+      const h = decode(part.body.data);
+      if (h.trim()) return h;
+    }
+    if (part.parts){
+      for (const p of part.parts){
+        const found = walk(p);
+        if (found) return found;
+      }
+    }
+    return '';
+  }
+  return walk(payload);
+}
+
 function extractGmailBodyText(payload){
   // Walk the MIME parts to find plain text (preferred) or html body, base64url-decoded.
   function decode(data){
@@ -2376,6 +2434,7 @@ async function searchGmailForCurrentVendor(){
     }));
 
     box.innerHTML = '';
+    window.gmailRawHtmlCache = window.gmailRawHtmlCache || {};
     let anyLinks = false;
     let anyAttachments = false;
     let anyAcceptancePhrase = false;
@@ -2402,6 +2461,7 @@ async function searchGmailForCurrentVendor(){
       const permalink = `https://mail.google.com/mail/u/0/#all/${msg.threadId || msg.id}`;
 
       const bodyText = extractGmailBodyText(msg.payload);
+      window.gmailRawHtmlCache[msg.id] = extractGmailRawHtml(msg.payload);
       const links = extractLinksFromText(bodyText || snippet);
       const attachments = extractGmailAttachments(msg.payload);
       if (links.length){ anyLinks = true; if (!bestLink) bestLink = links[0]; }
@@ -2419,11 +2479,12 @@ async function searchGmailForCurrentVendor(){
         if (emailMatch) bestSenderEmail = emailMatch[0];
       }
 
-      // Auto-detect real estimate/bid-invite requests (from an actual sender, with a link or attachment)
-      // and queue them to be added to "Received from them" automatically — no manual click needed.
+      // Auto-detect real estimate/bid-invite requests and queue them to be added to
+      // "Received from them" automatically — no manual click needed. (No longer requires
+      // a link/attachment, and no longer excludes platform-relayed senders like isqftmail —
+      // those relay real bid invites, they aren't spam.)
       if (
         !alreadyAdded.has(msg.id) &&
-        (links.length || attachments.length) &&
         estimateRequestPattern.test(subject + ' ' + snippet + ' ' + bodyText)
       ){
         autoAddCandidates.push({ msg, from, subject, date, snippet, bodyText, links, attachments, permalink });
@@ -2443,7 +2504,8 @@ async function searchGmailForCurrentVendor(){
           <span class="gm-date">${escapeHtml(date ? new Date(date).toLocaleDateString() : '')}</span>
         </div>
         <div class="gm-subject">${escapeHtml(subject)}</div>
-        <a href="${permalink}" target="_blank" class="gm-open" style="display:inline-block; margin:4px 0 8px;">🔗 Open this exact email in Gmail (new tab) →</a>
+        <a href="${permalink}" target="_blank" class="gm-open" style="display:inline-block; margin:4px 8px 8px 0;">🔗 Open this exact email in Gmail (new tab) →</a>
+        <button class="gm-attachment-btn view-original-formatted-btn" data-msgid="${msg.id}" data-subject="${escapeHtml(subject)}" style="margin-bottom:8px;">🖼️ View original formatting</button>
         <div class="email-body-preview" style="max-height:280px;">${escapeHtml(fullText)}</div>
         ${linksHtml}
         <div class="gm-attachments" id="gm-att-${msg.id}"></div>
@@ -2452,6 +2514,10 @@ async function searchGmailForCurrentVendor(){
           <button class="gm-attachment-btn gm-draft-response-btn">✉️ Draft response</button>
         </div>
       `;
+
+      card.querySelector('.view-original-formatted-btn').addEventListener('click', () => {
+        openRawEmailViewer(msg.id, subject);
+      });
 
       card.querySelector('.gm-add-received-btn').addEventListener('click', async () => {
         const entry = {
