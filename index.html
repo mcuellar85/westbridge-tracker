@@ -1668,7 +1668,7 @@ function renderDeadlineDisplay(vendor){
   const detected = currentDetail ? currentDetail.gmailDetectedDeadline : '';
 
   if (!vendor.deadline && !vendor.dateSubmitted && !detected){
-    box.innerHTML = 'No deadline info in the Sheet yet. Add <code>deadline</code> and <code>datesubmitted</code> columns to the Overview tab to track this (and to power the email alerts).';
+    box.innerHTML = 'No deadline detected yet from Gmail for this vendor — connect Gmail above (in the Email log section) and it will scan for one automatically. You can also add <code>deadline</code>/<code>datesubmitted</code> columns to the Overview tab as a backup source.';
     return;
   }
   const days = vendor.deadline ? daysUntil(vendor.deadline) : null;
@@ -2233,11 +2233,14 @@ function extractGmailBodyText(payload){
       let html = decode(part.body.data);
       html = html
         .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/tr>/gi, '\n')
+        .replace(/<\/t[dh]>/gi, '  |  ')
         .replace(/<\/p>/gi, '\n\n')
         .replace(/<\/div>/gi, '\n')
+        .replace(/<\/li>/gi, '\n')
         .replace(/<[^>]+>/g, '');
       html = decodeEntities(html);
-      html = html.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+      html = html.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').replace(/^\s*\|\s*/gm, '').trim();
       return html;
     }
     return '';
