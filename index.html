@@ -2060,6 +2060,28 @@ function openEstimateEmailDraft(est){
   openMailtoLink(null, subject, body);
 }
 
+function extractDueDate(text){
+  const monthNames = '(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)';
+  const numericDate = '\\d{1,2}[\\/\\-]\\d{1,2}[\\/\\-]\\d{2,4}';
+  const monthDate = monthNames + '\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?(?:,?\\s*\\d{2,4})?';
+  const triggers =
+    '(?:bids?\\s*(?:are\\s*)?due|estimates?\\s*(?:are\\s*)?due|proposals?\\s*(?:are\\s*)?due|' +
+    'responses?\\s*(?:are\\s*)?due|due\\s*date|due\\s*by|due\\s*no\\s*later\\s*than|' +
+    'deadline\\s*(?:is|of)?|no\\s*later\\s*than|not\\s*later\\s*than|submit(?:ted)?\\s*by|' +
+    'respond(?:ed)?\\s*by|please\\s*(?:provide|submit|send)[^.\\n]{0,35}?\\bby\\b|' +
+    'needed\\s*by|required\\s*by|close\\s*of\\s*business\\s*(?:on)?)';
+
+  const patterns = [
+    new RegExp(triggers + '\\D{0,12}(' + numericDate + ')', 'i'),
+    new RegExp(triggers + '\\D{0,15}(' + monthDate + ')', 'i')
+  ];
+  for (const p of patterns){
+    const m = text.match(p);
+    if (m) return m[1].trim();
+  }
+  return null;
+}
+
 function extractProjectName(subject){
   if (!subject) return 'this project';
   let s = subject
@@ -2339,7 +2361,7 @@ async function searchGmailForCurrentVendor(){
     let bestDueDate = null;
     const acceptancePatterns = /added you to (our|the) (bid|bidder|vendor|subcontractor)|you('re| are) (now )?(an )?approved (vendor|subcontractor)|on (our|the) (bid|bidder|vendor) list|welcome to (our|the) (vendor|subcontractor|bidder) (list|program)|added to (our|the) (subcontractor|vendor) list/i;
     const automatedSenderPattern = /noreply|no-reply|notifications?@|team@buildingconnected|procoretech|isqftmail|calendar-notification/i;
-    const dueDatePattern = /(?:bid due|estimate due|due date|due)\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i;
+    // Old rigid pattern replaced by extractDueDate() below — kept nothing here on purpose.
     const estimateRequestPattern = /estimate|quickinvite|invitation to bid|request for (a )?(quote|proposal)|\brfq\b|bid invit|please (provide|submit|send).{0,25}(pric|estimat|bid|proposal)/i;
     const alreadyAdded = new Set((currentDetail.estimatesReceived || []).map(e => e.sourceMsgId).filter(Boolean));
     const alreadyPending = new Set((currentDetail.estimatesPending || []).map(p => p.sourceMsgId).filter(Boolean));
@@ -2361,11 +2383,11 @@ async function searchGmailForCurrentVendor(){
       if (links.length){ anyLinks = true; if (!bestLink) bestLink = links[0]; }
       if (attachments.length){ anyAttachments = true; if (!bestAttachment) bestAttachment = { messageId: msg.id, att: attachments[0] }; }
       if (acceptancePatterns.test(bodyText || snippet)) anyAcceptancePhrase = true;
-      const dueMatch = (subject + ' ' + snippet + ' ' + bodyText).match(dueDatePattern);
-      if (dueMatch){
-        if (!bestDueDate) bestDueDate = dueMatch[1];
+      const dueDateFound = extractDueDate(subject + ' ' + snippet + ' ' + bodyText);
+      if (dueDateFound){
+        if (!bestDueDate) bestDueDate = dueDateFound;
         if (!alreadyPending.has(msg.id)){
-          autoDueDateCandidates.push({ msgId: msg.id, projectName: extractProjectName(subject), due: dueMatch[1] });
+          autoDueDateCandidates.push({ msgId: msg.id, projectName: extractProjectName(subject), due: dueDateFound });
         }
       }
       if (!bestSenderEmail && !automatedSenderPattern.test(from)){
