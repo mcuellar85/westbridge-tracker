@@ -2010,8 +2010,7 @@ function openEstimateEmailDraft(est){
 
   alert(`Don't forget: your email app will open, but browsers can't attach files automatically.\n\nAttach this file before sending:\n${est.name}\n\n(Tip: click "View" first to download it if it's not already on your computer.)`);
 
-  const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  window.location.href = mailto;
+  openMailtoLink(null, subject, body);
 }
 
 function extractProjectName(subject){
@@ -2040,14 +2039,22 @@ O 561-928-8035
 W westbridgedemolition.com`;
 }
 
+function openMailtoLink(toEmail, subject, body){
+  const to = toEmail ? (toEmail.match(/[\w.+-]+@[\w-]+\.[\w.-]+/)?.[0] || '') : '';
+  const mailto = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const a = document.createElement('a');
+  a.href = mailto;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 function openEstimateResponseDraft(toEmail, originalSubject){
   const projectName = extractProjectName(originalSubject);
   const subject = `Re: ${originalSubject || 'Estimate Request'}`;
   const body = buildEstimateResponseBody(projectName);
-
-  const toParam = toEmail ? encodeURIComponent(toEmail.match(/[\w.+-]+@[\w-]+\.[\w.-]+/)?.[0] || '') : '';
-  const mailto = `mailto:${toParam}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  window.location.href = mailto;
+  openMailtoLink(toEmail, subject, body);
 }
 
 document.getElementById('estimateUploadInput').addEventListener('change', (e) => {
