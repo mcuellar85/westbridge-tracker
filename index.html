@@ -282,7 +282,13 @@
   }
   .cheat-copy-btn:hover{ border-color:var(--safety); color:var(--text); }
   .cheat-copy-btn.copied{ border-color:var(--ok); color:var(--ok); }
-  .cheat-note{ font-size:12px; color:var(--text-dim); margin-bottom:16px; line-height:1.5; }
+  .cheat-note{ font-size:12.5px; color:var(--text); background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:16px; line-height:1.5; }
+  .section-title{
+    font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:var(--safety); font-weight:800;
+    margin:26px 0 10px; padding-top:18px; border-top:1px solid var(--line);
+  }
+  .section-title:first-of-type{ margin-top:0; padding-top:0; border-top:none; }
+  .subsection-block{ margin-bottom:12px; }
 
   /* Compact 2-column grid used only for the cheat sheet fields box */
   #cheatFieldsBox{ display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
@@ -299,31 +305,36 @@
 
   .estimate-item, .email-log-item{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
-    background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:9px 12px; margin-bottom:6px;
+    background:#182e4a; border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:10px;
   }
   .estimate-item .est-name{ font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .estimate-item .est-date{ font-size:11px; color:var(--text-dim); flex-shrink:0; margin-left:8px; }
   .pending-item{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
-    background:var(--warn-dim); border:1px solid var(--warn); border-radius:8px; padding:9px 12px; margin-bottom:6px;
+    background:#3d2e10; border:1px solid var(--warn); border-radius:8px; padding:12px 14px; margin-bottom:10px;
   }
-  .pending-item .pi-label{ font-size:13px; font-weight:600; }
-  .pending-item .pi-due{ font-size:11px; color:var(--warn); font-weight:700; }
+  .pending-item .pi-label{ font-size:13.5px; font-weight:600; color:var(--text); }
+  .pending-item .pi-due{ font-size:11.5px; color:var(--warn); font-weight:700; }
   .email-body-preview{
-    background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:8px 10px;
-    font-size:11.5px; color:var(--text-dim); white-space:pre-wrap; margin-top:8px; max-height:160px; overflow-y:auto;
+    background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:10px 12px;
+    font-size:12px; color:#c3d2e0; white-space:pre-wrap; margin-top:10px; max-height:170px; overflow-y:auto; line-height:1.6;
   }
-  .email-log-item .log-text{ font-size:12.5px; }
-  .email-log-item .log-date{ font-size:10.5px; color:var(--text-dim); display:block; margin-top:2px; }
-  .email-log-item .log-sender{ font-weight:700; color:var(--text); font-size:12.5px; display:block; margin-bottom:2px; }
-  .email-log-item .log-attachment{ display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--safety); margin-top:6px; text-decoration:none; }
+  .email-log-item .log-text{ font-size:13px; color:var(--text); line-height:1.5; }
+  .email-log-item .log-date{ font-size:11px; color:var(--text-dim); display:block; margin-top:4px; }
+  .email-log-item .log-sender{ font-weight:700; color:var(--text); font-size:13px; display:block; margin-bottom:4px; }
+  .email-log-item .log-attachment{ display:inline-flex; align-items:center; gap:4px; font-size:11.5px; color:var(--safety); margin-top:8px; text-decoration:none; }
 
-  .email-log-form{ background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:12px; margin-top:8px; }
-  .email-log-form .field{ margin-bottom:10px; }
-  .email-log-form textarea{ min-height:56px; }
-  .log-file-checkbox-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .email-log-form{ background:#182e4a; border:1px solid var(--line); border-radius:8px; padding:16px; margin-top:12px; }
+  .email-log-form .field{ margin-bottom:12px; }
+  .email-log-form .field label{ display:block; font-size:11.5px; color:var(--text-dim); font-weight:700; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:5px; }
+  .email-log-form .field input[type="text"]{
+    width:100%; background:var(--bg); border:1px solid var(--line); color:var(--text);
+    border-radius:7px; padding:9px 10px; font-size:13px; font-family:inherit;
+  }
+  .email-log-form textarea{ min-height:64px; }
+  .log-file-checkbox-row{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
   .log-file-checkbox-row input{ width:16px; height:16px; accent-color:var(--safety); }
-  .log-file-checkbox-row label{ font-size:12.5px; color:var(--text); }
+  .log-file-checkbox-row label{ font-size:13px; color:var(--text); }
 
   .gmail-search-row{ display:flex; gap:8px; margin-bottom:8px; }
   .gmail-search-row input{ flex:1; background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:7px; padding:8px 10px; font-size:12.5px; }
@@ -331,33 +342,34 @@
 
   .gmail-connect-box{ text-align:center; padding:20px; background:var(--panel-2); border:1px dashed var(--line); border-radius:8px; margin-bottom:8px; }
   .gmail-connect-box p{ font-size:12.5px; color:var(--text-dim); margin:0 0 12px; }
-  .gmail-results-box{ display:flex; flex-direction:column; gap:8px; margin-bottom:8px; max-height:340px; overflow-y:auto; }
-  .gmail-msg-card{ background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
-  .gmail-msg-card .gm-top{ display:flex; justify-content:space-between; gap:8px; margin-bottom:4px; }
-  .gmail-msg-card .gm-from{ font-size:12.5px; font-weight:700; color:var(--text); }
+  .gmail-results-box{ display:flex; flex-direction:column; gap:12px; margin-bottom:8px; max-height:380px; overflow-y:auto; padding:2px; }
+  .gmail-msg-card{
+    background:#1a3252; border:1px solid var(--line); border-left:4px solid var(--safety);
+    border-radius:8px; padding:12px 14px;
+  }
+  .gmail-msg-card .gm-top{ display:flex; justify-content:space-between; gap:8px; margin-bottom:6px; }
+  .gmail-msg-card .gm-from{ font-size:13px; font-weight:700; color:var(--text); }
   .gmail-msg-card .gm-date{ font-size:10.5px; color:var(--text-dim); white-space:nowrap; }
-  .gmail-msg-card .gm-subject{ font-size:12px; color:var(--text); margin-bottom:3px; }
-  .gmail-msg-card .gm-snippet{ font-size:11.5px; color:var(--text-dim); line-height:1.4; }
-  .gmail-msg-card .gm-open{ font-size:10.5px; color:var(--safety); text-decoration:none; font-weight:700; display:inline-block; margin-top:6px; }
-  .gm-links{ font-size:11px; color:var(--text-dim); margin-top:6px; line-height:1.6; }
-  .gm-links a{ color:#7ab8ff; text-decoration:none; word-break:break-all; }
+  .gmail-msg-card .gm-subject{ font-size:12.5px; color:var(--text); font-weight:600; margin-bottom:5px; }
+  .gmail-msg-card .gm-snippet{ font-size:12px; color:#c3d2e0; line-height:1.5; }
+  .gmail-msg-card .gm-open{ font-size:11px; color:var(--safety); text-decoration:none; font-weight:700; display:inline-block; margin-top:8px; }
+  .gm-links{ font-size:11.5px; color:var(--text-dim); margin-top:8px; line-height:1.7; }
+  .gm-links a{ color:#8ec4ff; text-decoration:none; word-break:break-all; }
   .gm-links a:hover{ text-decoration:underline; }
-  .gm-attachments{ margin-top:8px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .gm-attachments{ margin-top:10px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
   .gm-attachment-btn{
     background:var(--panel); border:1px solid var(--safety); color:var(--safety);
-    font-size:10.5px; font-weight:700; padding:4px 8px; border-radius:6px; cursor:pointer;
+    font-size:11px; font-weight:700; padding:5px 10px; border-radius:6px; cursor:pointer;
   }
   .gm-attachment-btn:hover{ background:var(--safety); color:#1a1a1a; }
   .gm-suggestion{
-    background:var(--safety-dim); border:1px solid var(--safety); border-radius:8px;
-    padding:8px 10px; font-size:11.5px; color:var(--text); margin-bottom:8px;
+    background:#3d2a10; border:1px solid var(--safety); border-radius:8px;
+    padding:12px 14px; font-size:12.5px; color:var(--text); margin-bottom:12px; line-height:1.6;
   }
-  .gm-howto{ line-height:1.6; }
-  .gm-howto a{ color:#7ab8ff; }
+  .gm-howto{ line-height:1.7; }
+  .gm-howto a{ color:#8ec4ff; }
   .gmail-status-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
   .gmail-status-row .gm-connected{ font-size:11px; color:var(--ok); font-weight:700; }
-
-  .section-title{ font-size:11.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-dim); font-weight:700; margin:18px 0 8px; }
 
   .checklist{ display:flex; flex-direction:column; gap:6px; }
   .checklist-item{
@@ -1218,9 +1230,9 @@ document.getElementById('cheatOverlay').addEventListener('click', (e) => {
 const PLATFORM_ACCESS_KEY = 'westbridge-platform-access';
 function defaultPlatforms(){
   return [
-    { id: 'buildingconnected', label: 'BuildingConnected', loginUrl: 'https://app.buildingconnected.com/login', username: '', password: '', note: '' },
-    { id: 'procore', label: 'Procore', loginUrl: 'https://login.procore.com/', username: '', password: '', note: '' },
-    { id: 'isqft', label: 'iSqFt / ConstructConnect', loginUrl: 'https://www.isqft.com/login', username: '', password: '', note: '' },
+    { id: 'buildingconnected', label: 'BuildingConnected', loginUrl: 'https://app.buildingconnected.com/login', username: 'maria2@wbdfl.com', password: '', note: 'Active account (Vladimir set this up) — receiving bid invites regularly. Password not found in email; set it manually here.' },
+    { id: 'procore', label: 'Procore', loginUrl: 'https://login.procore.com/', username: 'maria@wbdfl.com', password: '', note: 'Receiving project notifications via procoretech.com. Password not found in email; set it manually here.' },
+    { id: 'isqft', label: 'iSqFt / ConstructConnect', loginUrl: 'https://www.isqft.com/login', username: 'maria@wbdfl.com', password: '', note: 'Used for D. Stephenson Construction prequal. Password not found in email; set it manually here.' },
     { id: 'compass', label: 'COMPASS (Bespoke Metrics)', loginUrl: 'https://compass.bespokemetrics.com', username: 'maria@wbdfl.com', password: '', note: 'Prequalification & bidding tool. May charge a usage fee. Account confirmed via email verification 04/07/2026 — password not found in email, set it manually here.' },
   ];
 }
