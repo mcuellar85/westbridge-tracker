@@ -1895,7 +1895,7 @@ function renderEstimatesReceived(){
       <div class="email-body-preview">${escapeHtml(responseBody)}</div>
       <div class="file-current-actions" style="margin-top:8px; justify-content:flex-end;">
         ${hasRealLink ? `<button class="file-view-link view-received-btn" data-idx="${idx}" style="border:none; cursor:pointer;">${est.dataUrl.startsWith('data:') ? '📄 View file' : '🔗 Open link'}</button>` : ''}
-        <button class="file-view-link respond-received-btn" data-idx="${idx}" style="border:none; cursor:pointer;">✉️ Open in Mail</button>
+        <button class="file-view-link respond-received-btn" data-idx="${idx}" style="border:none; cursor:pointer;">✉️ Open in Gmail</button>
         <button class="file-remove-btn" data-idx="${idx}">Remove</button>
       </div>
     `;
@@ -1984,7 +1984,7 @@ function renderEstimates(highlightIdx){
       <div class="email-body-preview">${escapeHtml(body)}</div>
       <div class="file-current-actions" style="margin-top:8px; justify-content:flex-end;">
         <button class="file-view-link view-sent-btn" data-idx="${idx}" style="border:none; cursor:pointer;">View</button>
-        <button class="file-view-link email-est-btn" data-idx="${idx}" style="border:none; cursor:pointer;">✉️ Open in Mail</button>
+        <button class="file-view-link email-est-btn" data-idx="${idx}" style="border:none; cursor:pointer;">✉️ Open in Gmail</button>
         <button class="file-remove-btn" data-idx="${idx}">Remove</button>
       </div>
     `;
@@ -2008,7 +2008,7 @@ function openEstimateEmailDraft(est){
   const subject = `Estimate from Westbridge Demolition — ${vendorName}`;
   const body = buildEstimateEmailBody(vendorName);
 
-  alert(`Don't forget: your email app will open, but browsers can't attach files automatically.\n\nAttach this file before sending:\n${est.name}\n\n(Tip: click "View" first to download it if it's not already on your computer.)`);
+  alert(`Don't forget: a Gmail draft will open in a new tab, but it can't attach files automatically.\n\nAttach this file before sending:\n${est.name}\n\n(Tip: click "View" first to download it if it's not already on your computer.)`);
 
   openMailtoLink(null, subject, body);
 }
@@ -2041,13 +2041,10 @@ W westbridgedemolition.com`;
 
 function openMailtoLink(toEmail, subject, body){
   const to = toEmail ? (toEmail.match(/[\w.+-]+@[\w-]+\.[\w.-]+/)?.[0] || '') : '';
-  const mailto = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  const a = document.createElement('a');
-  a.href = mailto;
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  const gmailComposeUrl =
+    `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}` +
+    `&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(gmailComposeUrl, '_blank');
 }
 
 function openEstimateResponseDraft(toEmail, originalSubject){
