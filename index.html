@@ -1441,9 +1441,17 @@ async function loadCompanyDocs(){
   } catch (e) { /* none saved yet */ }
   return defaultCompanyDocs();
 }
-async function saveCompanyDocs(){
-  try { await storage.set(COMPANY_DOCS_KEY, JSON.stringify(companyDocsData), true); }
-  catch (e) { console.error('Could not save company documents', e); }
+// Serialized so uploading several files back-to-back never race each other over the
+// network — each save now waits for the previous one to actually finish before it goes
+// out, and always sends the LATEST state at the moment it's its turn, so nothing gets
+// silently overwritten by an earlier, less-complete save arriving out of order.
+let companyDocsSaveChain = Promise.resolve();
+function saveCompanyDocs(){
+  companyDocsSaveChain = companyDocsSaveChain.then(async () => {
+    try { await storage.set(COMPANY_DOCS_KEY, JSON.stringify(companyDocsData), true); }
+    catch (e) { console.error('Could not save company documents', e); }
+  });
+  return companyDocsSaveChain;
 }
 
 const COMPANY_DOC_LABELS = {
@@ -1670,14 +1678,20 @@ async function loadVendorDetail(vendorName){
   return { formUrl: '', applicationMethods: [], checklist: defaultChecklist(), notes: '', onBiddingList: false, uploadedFiles: [], estimates: [], estimatesReceived: [], estimatesPending: [], emailLog: [], gmailSearchTerm: '' };
 }
 
-async function saveVendorDetail(vendorName, detail){
-  const key = slugify(vendorName);
-  try {
-    await storage.set(key, JSON.stringify(detail), true);
-    flashSaved();
-  } catch (e) {
-    console.error('Could not save vendor detail', e);
-  }
+// Serialized (same reason as company docs above) — uploading several files back-to-back
+// for one vendor no longer risks two saves landing out of order and losing data.
+let vendorSaveChain = Promise.resolve();
+function saveVendorDetail(vendorName, detail){
+  vendorSaveChain = vendorSaveChain.then(async () => {
+    const key = slugify(vendorName);
+    try {
+      await storage.set(key, JSON.stringify(detail), true);
+      flashSaved();
+    } catch (e) {
+      console.error('Could not save vendor detail', e);
+    }
+  });
+  return vendorSaveChain;
 }
 
 function flashSaved(){
