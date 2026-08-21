@@ -559,6 +559,320 @@
     </details>
 
     <details class="detail-section">
+<details class="detail-section">
+<summary>🔍 Scan Emails for Deadlines</summary>
+
+<!-- SCAN BUTTON -->
+<div style="margin-bottom: 20px;">
+<button id="scanDeadlinesBtnMain" class="btn primary" style="width: 100%; padding: 12px; font-size: 14px; font-weight: bold;">
+🔍 Scan All Emails for Deadlines
+</button>
+<div id="scanDeadlinesStatus" style="margin-top: 10px; padding: 10px; border-radius: 4px; display: none;"></div>
+</div>
+
+<!-- RESULTS LIST -->
+<div id="scannedDeadlinesList" style="display: none; margin-top: 20px;">
+<h3 style="color: #333; margin-bottom: 15px; font-weight: 600;">Projects with Deadlines Found</h3>
+<div id="deadlinesContainer" style="display: flex; flex-direction: column; gap: 12px;"></div>
+</div>
+
+</details>
+
+<!-- STYLES FOR DEADLINE CARDS -->
+<style>
+.deadline-card {
+background-color: #f8f9fa;
+border: 1px solid #e0e0e0;
+border-radius: 8px;
+padding: 16px;
+margin-bottom: 12px;
+box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+transition: all 0.3s ease;
+}
+
+.deadline-card:hover {
+box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+border-color: #d0d0d0;
+}
+
+.deadline-card-title {
+font-size: 16px;
+font-weight: 600;
+color: #1a1a1a;
+margin-bottom: 8px;
+word-break: break-word;
+}
+
+.deadline-card-deadline {
+font-size: 14px;
+color: #333;
+margin-bottom: 10px;
+display: flex;
+align-items: center;
+gap: 8px;
+}
+
+.deadline-card-deadline strong {
+color: #d9534f;
+font-weight: 600;
+}
+
+.deadline-card-link {
+display: inline-block;
+padding: 8px 14px;
+background-color: #007bff;
+color: white;
+text-decoration: none;
+border-radius: 4px;
+font-size: 13px;
+font-weight: 500;
+transition: background-color 0.2s;
+}
+
+.deadline-card-link:hover {
+background-color: #0056b3;
+}
+
+.scan-status-loading {
+background-color: #d1ecf1;
+color: #0c5460;
+border: 1px solid #bee5eb;
+border-radius: 4px;
+padding: 12px;
+}
+
+.scan-status-success {
+background-color: #d4edda;
+color: #155724;
+border: 1px solid #c3e6cb;
+border-radius: 4px;
+padding: 12px;
+}
+
+.scan-status-error {
+background-color: #f8d7da;
+color: #721c24;
+border: 1px solid #f5c6cb;
+border-radius: 4px;
+padding: 12px;
+}
+
+.spinner {
+display: inline-block;
+width: 14px;
+height: 14px;
+border: 2px solid rgba(0,0,0,0.1);
+border-top-color: #007bff;
+border-radius: 50%;
+animation: spin 0.8s linear infinite;
+margin-right: 8px;
+}
+
+@keyframes spin {
+to { transform: rotate(360deg); }
+}
+</style>
+
+<!-- JAVASCRIPT LOGIC -->
+<script>
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxvvMPexTW3kW1E2iRgOLhc4PiBOJrho5kMwUEq_0xMbZuLVdpeDmSi9-OMGkiqKCNm/exec';
+
+let allEmails = [];
+let scannedDeadlines = [];
+
+document.getElementById('scanDeadlinesBtnMain')?.addEventListener('click', scanEmailsForDeadlines);
+
+async function scanEmailsForDeadlines() {
+const statusDiv = document.getElementById('scanDeadlinesStatus');
+const containerDiv = document.getElementById('scannedDeadlinesList');
+const resultsDiv = document.getElementById('deadlinesContainer');
+const btn = document.getElementById('scanDeadlinesBtnMain');
+
+statusDiv.style.display = 'block';
+statusDiv.className = 'scan-status-loading';
+statusDiv.innerHTML = '<div class="spinner"></div>Scanning emails for deadlines...';
+btn.disabled = true;
+containerDiv.style.display = 'none';
+resultsDiv.innerHTML = '';
+scannedDeadlines = [];
+
+try {
+await getAllEmails();
+
+if (allEmails.length === 0) {
+throw new Error('No emails found. Make sure Gmail is connected.');
+}
+
+statusDiv.innerHTML = `<div class="spinner"></div>Processing ${allEmails.length} emails...`;
+
+for (let i = 0; i < allEmails.length; i++) {
+const email = allEmails[i];
+statusDiv.innerHTML = `<div class="spinner"></div>Processing email ${i + 1} of ${allEmails.length}...`;
+await processEmailForDeadlines(email);
+}
+
+if (scannedDeadlines.length > 0) {
+displayDeadlines();
+statusDiv.className = 'scan-status-success';
+statusDiv.innerHTML = `✅ Found ${scannedDeadlines.length} deadline(s) from ${allEmails.length} email(s)`;
+containerDiv.style.display = 'block';
+} else {
+statusDiv.className = 'scan-status-error';
+statusDiv.innerHTML = '⚠️ No deadlines found in emails. Make sure emails contain images with text.';
+containerDiv.style.display = 'none';
+}
+
+} catch (error) {
+console.error('Error scanning deadlines:', error);
+statusDiv.className = 'scan-status-error';
+statusDiv.innerHTML = `❌ Error: ${error.message}`;
+containerDiv.style.display = 'none';
+} finally {
+btn.disabled = false;
+}
+}
+
+async function getAllEmails() {
+const cache = window.gmailRawHtmlCache || {};
+allEmails = Object.entries(cache).map(([id, html]) => ({
+id: id,
+html: html
+}));
+
+if (allEmails.length === 0 && window.emailsData) {
+allEmails = window.emailsData;
+}
+}
+
+async function processEmailForDeadlines(email) {
+try {
+const html = email.html || email.payload?.parts?.[0]?.body?.data || '';
+if (!html) return;
+
+const images = extractImagesFromHtml(html);
+
+for (const imgData of images) {
+const ocrResult = await callOCR(imgData);
+if (ocrResult && ocrResult.text) {
+const deadline = extractDeadlineFromText(ocrResult.text);
+if (deadline) {
+scannedDeadlines.push({
+projectTitle: extractProjectTitle(html),
+deadline: deadline.date,
+deadlineType: deadline.type,
+emailId: email.id,
+emailSubject: email.subject || 'Unknown Project'
+});
+}
+}
+}
+} catch (error) {
+console.warn('Error processing email:', error);
+}
+}
+
+function extractImagesFromHtml(html) {
+const images = [];
+const imgRegex = /<img[^>]+src="([^"]+)"[^>]*>/gi;
+let match;
+
+while ((match = imgRegex.exec(html)) !== null) {
+const src = match[1];
+if (src.startsWith('data:image')) {
+images.push(src);
+}
+}
+
+return images;
+}
+
+async function callOCR(imageData) {
+try {
+const response = await fetch(APPS_SCRIPT_URL, {
+method: 'POST',
+body: JSON.stringify({
+action: 'ocrImage',
+imageData: imageData,
+imageUrl: imageData
+})
+});
+
+const result = await response.json();
+return result;
+} catch (error) {
+console.warn('OCR failed for image:', error);
+return null;
+}
+}
+
+function extractDeadlineFromText(text) {
+const deadlineKeywords = ['due', 'deadline', 'bid until', 'submit by', 'date', 'expired', 'required by', 'due date'];
+const datePatterns = [
+/\b(\d{1,2}\/\d{1,2}\/\d{2,4})\b/g,
+/\b(\d{1,2}-\d{1,2}-\d{2,4})\b/g,
+/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b/gi,
+];
+
+const lowerText = text.toLowerCase();
+const hasDeadlineKeyword = deadlineKeywords.some(kw => lowerText.includes(kw));
+
+if (!hasDeadlineKeyword) return null;
+
+for (const pattern of datePatterns) {
+const dateMatch = text.match(pattern);
+if (dateMatch) {
+return {
+date: dateMatch[0],
+type: 'deadline'
+};
+}
+}
+
+return null;
+}
+
+function extractProjectTitle(html) {
+const subjectMatch = html.match(/<title>([^<]+)<\/title>/i);
+if (subjectMatch) return subjectMatch[1];
+
+const headerMatch = html.match(/<h[12][^>]*>([^<]+)<\/h[12]>/i);
+if (headerMatch) return headerMatch[1];
+
+return 'Untitled Project';
+}
+
+function displayDeadlines() {
+const container = document.getElementById('deadlinesContainer');
+container.innerHTML = '';
+
+scannedDeadlines.forEach((item) => {
+const card = document.createElement('div');
+card.className = 'deadline-card';
+card.innerHTML = `
+<div class="deadline-card-title">${escapeHtml(item.projectTitle)}</div>
+<div class="deadline-card-deadline">
+<strong>📅 ${escapeHtml(item.deadline)}</strong>
+</div>
+<a href="#" class="deadline-card-link" onclick="openEmailForDeadline('${escapeHtml(item.emailId)}'); return false;">
+View Original Email →
+</a>
+`;
+container.appendChild(card);
+});
+}
+
+function openEmailForDeadline(emailId) {
+if (window.openRawEmailViewer) {
+window.openRawEmailViewer(emailId, 'Deadline Email');
+}
+}
+
+function escapeHtml(text) {
+const div = document.createElement('div');
+div.textContent = text;
+return div.innerHTML;
+}
+</script>
       <summary>📅 Deadlines</summary>
       <div class="cheat-note" id="deadlineDisplay">No deadline info in the Sheet yet for this vendor.</div>
       <div id="gmailDeadlineSuggestionBox"></div>
