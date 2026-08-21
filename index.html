@@ -1321,9 +1321,16 @@ async function loadPlatformAccess(){
   } catch (e) { /* none saved yet */ }
   return defaults;
 }
-async function savePlatformAccess(){
-  try { await storage.set(PLATFORM_ACCESS_KEY, JSON.stringify(platformData), true); }
-  catch (e) { console.error('Could not save platform access', e); }
+// Serialized (same race-condition fix as company docs and vendor details) — editing
+// several fields close together (even across different platforms) no longer risks one
+// save overwriting another's more complete data.
+let platformSaveChain = Promise.resolve();
+function savePlatformAccess(){
+  platformSaveChain = platformSaveChain.then(async () => {
+    try { await storage.set(PLATFORM_ACCESS_KEY, JSON.stringify(platformData), true); }
+    catch (e) { console.error('Could not save platform access', e); }
+  });
+  return platformSaveChain;
 }
 
 function renderPlatformAccess(){
