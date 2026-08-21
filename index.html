@@ -64,6 +64,7 @@
   h1 span{ color: var(--text-dim); font-weight:500; }
   .sync{ text-align:right; font-size:12px; color:var(--text-dim); line-height:1.6; position:relative; z-index:1; text-shadow:0 1px 3px rgba(0,0,0,0.7); }
   .sync b{ color:var(--text); }
+  .sync b{ color:var(--text); }
   .sync #liveDot{ display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--ok); margin-right:5px; }
   .sync #liveDot.err{ background:var(--danger); }
   .sync #liveDot.stale{ background:var(--warn); }
@@ -317,13 +318,13 @@
 
   .estimate-item, .email-log-item{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
-    background:#182e4a; border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:10px;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:10px;
   }
   .estimate-item .est-name{ font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .estimate-item .est-date{ font-size:11px; color:var(--text-dim); flex-shrink:0; margin-left:8px; }
   .pending-item{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
-    background:#3d2e10; border:1px solid var(--warn); border-radius:8px; padding:12px 14px; margin-bottom:10px;
+    background:var(--warn-dim); border:1px solid var(--warn); border-radius:8px; padding:12px 14px; margin-bottom:10px;
   }
   .pending-item .pi-label{ font-size:13.5px; font-weight:600; color:var(--text); }
   .pending-item .pi-due{ font-size:11.5px; color:var(--warn); font-weight:700; }
@@ -340,7 +341,7 @@
   .email-log-item .log-sender{ font-weight:700; color:var(--text); font-size:13px; display:block; margin-bottom:4px; }
   .email-log-item .log-attachment{ display:inline-flex; align-items:center; gap:4px; font-size:11.5px; color:var(--safety); margin-top:8px; text-decoration:none; }
 
-  .email-log-form{ background:#182e4a; border:1px solid var(--line); border-radius:8px; padding:16px; margin-top:12px; }
+  .email-log-form{ background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:16px; margin-top:12px; }
   .email-log-form .field{ margin-bottom:12px; }
   .email-log-form .field label{ display:block; font-size:11.5px; color:var(--text-dim); font-weight:700; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:5px; }
   .email-log-form .field input[type="text"]{
@@ -379,7 +380,7 @@
   }
   .gm-attachment-btn:hover{ background:var(--safety); color:#1a1a1a; }
   .gm-suggestion{
-    background:#3d2a10; border:1px solid var(--safety); border-radius:8px;
+    background:var(--warn-dim); border:1px solid var(--safety); border-radius:8px;
     padding:12px 14px; font-size:12.5px; color:var(--text); margin-bottom:12px; line-height:1.6;
   }
   .gm-howto{ line-height:1.7; }
@@ -536,20 +537,13 @@
     </div>
 
     <details class="detail-section" open>
-      <summary>📎 Upload form/PDF to fill</summary>
-      <div class="cheat-note" style="margin-bottom:8px;">Use this for the actual application form/PDF for this company — whether they emailed it to you, or you had to download it from their website to apply.</div>
+      <summary>📎 Forms/PDFs to fill</summary>
+      <div class="cheat-note" style="margin-bottom:8px;">Use this for the application form(s)/PDF(s) for this company — whether they emailed them to you, or you had to download them from their website. If they sent more than one document, add each one below.</div>
+      <div id="uploadedFilesBox"></div>
       <div class="file-upload-box" id="fileUploadBox">
-        <div class="file-current" id="fileCurrentRow" style="display:none;">
-          <span class="file-name" id="fileNameText"></span>
-          <div class="file-current-actions">
-            <button class="file-view-link" id="fileViewLink" style="border:none; cursor:pointer;">View file</button>
-            <button class="file-view-link" id="fillPdfBtn" style="display:none; border:none; cursor:pointer;">Fill / Edit</button>
-            <button class="file-remove-btn" id="fileRemoveBtn">Remove</button>
-          </div>
-        </div>
-        <label class="file-input-label" for="fileUploadInput" id="fileUploadLabel">📎 Upload the form/PDF to fill (from email or downloaded from their website)</label>
-        <input type="file" id="fileUploadInput" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*">
-        <div class="file-hint">Stored with the tracker (up to ~4 MB). Anyone who opens this tracker can view it.</div>
+        <label class="file-input-label" for="fileUploadInput" id="fileUploadLabel">📎 + Add a form/PDF (from email or downloaded from their website)</label>
+        <input type="file" id="fileUploadInput" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" multiple>
+        <div class="file-hint">You can select more than one file at once. Stored with the tracker — anyone who opens it can view these.</div>
       </div>
     </details>
 
@@ -563,20 +557,14 @@
     </details>
 
     <details class="detail-section">
-      <summary>📅 Deadlines</summary>
-      <div class="cheat-note" id="deadlineDisplay">No deadline info in the Sheet yet for this vendor.</div>
-      <div id="gmailDeadlineSuggestionBox"></div>
-    </details>
-
-    <details class="detail-section">
       <summary>💰 Estimates<span class="saved-flash" id="estimateSavedFlash">Saved ✓</span></summary>
 
       <div class="section-title" style="margin-top:0;">📥 Received from them (docs/requests to base our estimate on)</div>
       <div id="estimatesReceivedBox"></div>
       <div class="file-upload-box" style="margin-top:8px;">
-        <label class="file-input-label" for="estimateReceivedInput">📎 Upload what they sent us</label>
-        <input type="file" id="estimateReceivedInput" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*">
-        <div class="file-hint">Plans, scope, RFQ, or whatever they sent asking us to price the job.</div>
+        <label class="file-input-label" for="estimateReceivedInput">📎 + Add what they sent us</label>
+        <input type="file" id="estimateReceivedInput" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" multiple>
+        <div class="file-hint">Plans, scope, RFQ, or whatever they sent asking us to price the job. Select more than one file if they sent several — each becomes its own entry above.</div>
       </div>
 
       <div class="section-title">⏳ Pending / to send</div>
@@ -590,9 +578,9 @@
       <div class="section-title">📤 Estimates we're sending them</div>
       <div id="estimatesBox"></div>
       <div class="file-upload-box" style="margin-top:8px;">
-        <label class="file-input-label" for="estimateUploadInput">📎 Upload the estimate we sent</label>
-        <input type="file" id="estimateUploadInput" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*">
-        <div class="file-hint">Each upload is added below with a ready-to-send email body — no need to click anything else to see it.</div>
+        <label class="file-input-label" for="estimateUploadInput">📎 + Add another estimate we sent</label>
+        <input type="file" id="estimateUploadInput" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" multiple>
+        <div class="file-hint">Each upload is added below with a ready-to-send email body. You can select several at once.</div>
       </div>
     </details>
 
@@ -618,9 +606,11 @@
 
       <div id="emailLogBox"></div>
       <div class="email-log-form">
+        <p class="cheat-note" style="margin-top:0;">Use this to manually log a call or an email that Gmail didn't pick up automatically above — a quick record of who said what and when.</p>
         <div class="field">
-          <label>Sender</label>
+          <label>Who sent it</label>
           <input type="text" id="newEmailLogSender" placeholder="e.g. John Smith (john@stephenson.com), or 'Us — Maria'">
+          <div class="file-hint">Write the person/company who sent it, or "Us — [your name]" if it was an email or call you made to them.</div>
         </div>
         <div class="field">
           <label>Email content / summary</label>
@@ -1564,23 +1554,24 @@ async function loadVendorDetail(vendorName){
           ? [parsed.applicationMethod]
           : [];
       }
+      let uploadedFiles = Array.isArray(parsed.uploadedFiles) ? parsed.uploadedFiles : [];
+      if (!uploadedFiles.length && parsed.uploadedFile) uploadedFiles = [parsed.uploadedFile]; // migrate old single-file data
       return {
         formUrl: parsed.formUrl || '',
         applicationMethods: methods,
         checklist: parsed.checklist || defaultChecklist(),
         notes: parsed.notes || '',
         onBiddingList: !!parsed.onBiddingList,
-        uploadedFile: parsed.uploadedFile || null,
+        uploadedFiles: uploadedFiles,
         estimates: parsed.estimates || [],
         estimatesReceived: parsed.estimatesReceived || [],
         estimatesPending: parsed.estimatesPending || [],
         emailLog: parsed.emailLog || [],
-        gmailSearchTerm: parsed.gmailSearchTerm || '',
-        gmailDetectedDeadline: parsed.gmailDetectedDeadline || ''
+        gmailSearchTerm: parsed.gmailSearchTerm || ''
       };
     }
   } catch (e) { /* none saved yet */ }
-  return { formUrl: '', applicationMethods: [], checklist: defaultChecklist(), notes: '', onBiddingList: false, uploadedFile: null, estimates: [], estimatesReceived: [], estimatesPending: [], emailLog: [], gmailSearchTerm: '', gmailDetectedDeadline: '' };
+  return { formUrl: '', applicationMethods: [], checklist: defaultChecklist(), notes: '', onBiddingList: false, uploadedFiles: [], estimates: [], estimatesReceived: [], estimatesPending: [], emailLog: [], gmailSearchTerm: '' };
 }
 
 async function saveVendorDetail(vendorName, detail){
@@ -1603,8 +1594,17 @@ function flashSaved(){
 function queueSave(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
+    saveTimer = null;
     if (currentVendor && currentDetail) saveVendorDetail(currentVendor.name, currentDetail);
   }, 400);
+}
+
+// Bypasses the debounce and saves right away — used for closing the panel, and for
+// important one-off toggles (like the bidding-list checkbox) that shouldn't risk being
+// lost if the person closes the panel before the normal 400ms debounce fires.
+function flushSaveNow(){
+  if (saveTimer){ clearTimeout(saveTimer); saveTimer = null; }
+  if (currentVendor && currentDetail) saveVendorDetail(currentVendor.name, currentDetail);
 }
 
 function renderChecklist(){
@@ -1682,6 +1682,7 @@ function renderProgress(){
 }
 
 async function openVendorDetail(vendor){
+  flushSaveNow(); // make sure nothing from the previous vendor is left unsaved
   currentVendor = vendor;
   currentDetail = await loadVendorDetail(vendor.name);
   document.getElementById('detailName').textContent = vendor.name;
@@ -1695,8 +1696,7 @@ async function openVendorDetail(vendor){
   renderChecklist();
   renderProgress();
   renderBidCheckbox();
-  renderUploadedFile();
-  renderDeadlineDisplay(vendor);
+  renderUploadedFiles();
   renderEstimatesReceived();
   renderEstimatesPending();
   renderEstimates();
@@ -1717,29 +1717,6 @@ async function openVendorDetail(vendor){
     : `No Google Sheet linked for this vendor yet.`;
 
   document.getElementById('detailOverlay').classList.add('open');
-}
-
-function renderDeadlineDisplay(vendor){
-  const box = document.getElementById('deadlineDisplay');
-  const detected = currentDetail ? currentDetail.gmailDetectedDeadline : '';
-
-  if (!vendor.deadline && !vendor.dateSubmitted && !detected){
-    box.innerHTML = 'No deadline detected yet from Gmail for this vendor — connect Gmail above (in the Email log section) and it will scan for one automatically. You can also add <code>deadline</code>/<code>datesubmitted</code> columns to the Overview tab as a backup source.';
-    return;
-  }
-  const days = vendor.deadline ? daysUntil(vendor.deadline) : null;
-  let urgency = '';
-  if (days !== null){
-    if (days < 0) urgency = ' — ⚠ deadline has passed';
-    else if (days === 0) urgency = ' — 🔴 due today';
-    else if (days <= 3) urgency = ` — 🟠 due in ${days} day${days === 1 ? '' : 's'}`;
-    else urgency = ` — due in ${days} days`;
-  }
-  box.innerHTML = `
-    ${vendor.deadline ? `GC's submission deadline (from Sheet): <b style="color:var(--text)">${escapeHtml(vendor.deadline)}</b>${urgency}<br>` : ''}
-    ${detected ? `📧 Deadline found in Gmail: <b style="color:var(--warn)">${escapeHtml(detected)}</b> <span style="font-size:10.5px;">(update your Overview sheet to make this official)</span><br>` : ''}
-    ${vendor.dateSubmitted ? `We submitted on: <b style="color:var(--text)">${escapeHtml(vendor.dateSubmitted)}</b>` : 'We haven\'t logged a submission date yet.'}
-  `;
 }
 
 function renderBidCheckbox(){
@@ -1769,7 +1746,7 @@ function renderVendorStatusBanner(){
 document.getElementById('vendorStatusToggle').addEventListener('click', () => {
   currentDetail.onBiddingList = !currentDetail.onBiddingList;
   renderBidCheckbox();
-  queueSave();
+  flushSaveNow();
 });
 
 // Modern browsers block navigating directly to large data: URLs (shows as "blocked").
@@ -1799,33 +1776,57 @@ function fileKindFromDataUrl(dataUrl){
   return 'other';
 }
 
-function renderUploadedFile(){
-  const wrap = document.getElementById('fileUploadBox');
-  const row = document.getElementById('fileCurrentRow');
-  const label = document.getElementById('fileUploadLabel');
-  const fillBtn = document.getElementById('fillPdfBtn');
-  if (currentDetail.uploadedFile){
-    wrap.classList.add('has-file');
-    row.style.display = 'flex';
-    label.style.display = 'none';
-    document.getElementById('fileNameText').textContent = currentDetail.uploadedFile.name;
-    const viewBtn = document.getElementById('fileViewLink');
-    viewBtn.onclick = () => {
-      const url = currentDetail.uploadedFile.dataUrl;
-      if (url.startsWith('data:')) openFileSafely(url, currentDetail.uploadedFile.name);
-      else window.open(url, '_blank');
-    };
-    const kind = fileKindFromDataUrl(currentDetail.uploadedFile.dataUrl);
-    currentDetail.uploadedFile.kind = kind;
-    if (kind === 'pdf'){ fillBtn.style.display = 'inline-block'; fillBtn.textContent = 'Fill PDF'; }
-    else if (kind === 'excel'){ fillBtn.style.display = 'inline-block'; fillBtn.textContent = 'Edit Excel'; }
-    else if (kind === 'word'){ fillBtn.style.display = 'inline-block'; fillBtn.textContent = 'View Word doc'; }
-    else { fillBtn.style.display = 'none'; }
-  } else {
-    wrap.classList.remove('has-file');
-    row.style.display = 'none';
-    label.style.display = 'inline-block';
+let fillTargetIndex = 0; // which uploadedFiles[] entry Fill/Edit currently targets
+
+function renderUploadedFiles(){
+  const box = document.getElementById('uploadedFilesBox');
+  box.innerHTML = '';
+  if (!currentDetail.uploadedFiles.length){
+    box.innerHTML = '<div class="cheat-note" style="margin-bottom:8px;">No forms uploaded yet for this vendor.</div>';
+    return;
   }
+  currentDetail.uploadedFiles.forEach((file, idx) => {
+    const kind = fileKindFromDataUrl(file.dataUrl);
+    file.kind = kind;
+    let fillLabel = '';
+    if (kind === 'pdf') fillLabel = 'Fill PDF';
+    else if (kind === 'excel') fillLabel = 'Edit Excel';
+    else if (kind === 'word') fillLabel = 'View Word doc';
+
+    const row = document.createElement('div');
+    row.className = 'file-upload-box has-file';
+    row.style.marginBottom = '10px';
+    row.innerHTML = `
+      <div class="file-current" style="display:flex;">
+        <span class="file-name">${escapeHtml(file.name)}</span>
+        <div class="file-current-actions">
+          <button class="file-view-link uf-view-btn" style="border:none; cursor:pointer;">View file</button>
+          ${fillLabel ? `<button class="file-view-link uf-fill-btn" style="border:none; cursor:pointer;">${fillLabel}</button>` : ''}
+          <button class="file-remove-btn uf-remove-btn">Remove</button>
+        </div>
+      </div>
+    `;
+    row.querySelector('.uf-view-btn').addEventListener('click', () => {
+      if (file.dataUrl.startsWith('data:')) openFileSafely(file.dataUrl, file.name);
+      else window.open(file.dataUrl, '_blank');
+    });
+    const fillBtnEl = row.querySelector('.uf-fill-btn');
+    if (fillBtnEl){
+      fillBtnEl.addEventListener('click', () => {
+        fillTargetIndex = idx;
+        if (kind === 'pdf') openPdfFiller();
+        else if (kind === 'excel') openExcelEditor();
+        else if (kind === 'word') openWordViewer();
+      });
+    }
+    row.querySelector('.uf-remove-btn').addEventListener('click', () => {
+      if (!confirm('Remove this file?')) return;
+      currentDetail.uploadedFiles.splice(idx, 1);
+      renderUploadedFiles();
+      queueSave();
+    });
+    box.appendChild(row);
+  });
 }
 
 function updateOpenFormBtn(){
@@ -1856,7 +1857,7 @@ document.querySelectorAll('.app-method-cb').forEach(cb => {
 document.getElementById('bidCheckbox').addEventListener('change', () => {
   currentDetail.onBiddingList = document.getElementById('bidCheckbox').checked;
   renderBidCheckbox();
-  queueSave();
+  flushSaveNow();
 });
 const MAX_FILE_BYTES = 20 * 1024 * 1024; // ~20MB — files now go to Google Drive, not the Sheet, so this is much more generous
 
@@ -1888,29 +1889,24 @@ async function uploadFileToDrive(file){
   return data.url; // small Drive link — this is what gets stored, not the file itself
 }
 document.getElementById('fileUploadInput').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  if (file.size > MAX_FILE_BYTES){
-    alert('That file is too large (max ~20 MB). Try a smaller file or compress the PDF.');
-    e.target.value = '';
-    return;
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+  for (const file of files){
+    if (file.size > MAX_FILE_BYTES){
+      alert(`"${file.name}" is too large (max ~20 MB) — skipped.`);
+      continue;
+    }
+    try {
+      const url = await uploadFileToDrive(file);
+      currentDetail.uploadedFiles.push({ name: file.name, dataUrl: url, uploadedAt: new Date().toISOString() });
+    } catch (err) {
+      console.error(err);
+      alert(`Could not upload "${file.name}". Make sure the storage backend is connected, then try again.`);
+    }
   }
-  try {
-    const url = await uploadFileToDrive(file);
-    currentDetail.uploadedFile = { name: file.name, dataUrl: url, uploadedAt: new Date().toISOString() };
-    renderUploadedFile();
-    queueSave();
-  } catch (err) {
-    console.error(err);
-    alert('Could not upload that file. Make sure the storage backend is connected, then try again.');
-  }
-  e.target.value = '';
-});
-document.getElementById('fileRemoveBtn').addEventListener('click', () => {
-  if (!confirm('Remove the uploaded file for this vendor?')) return;
-  currentDetail.uploadedFile = null;
-  renderUploadedFile();
+  renderUploadedFiles();
   queueSave();
+  e.target.value = '';
 });
 
 /* ---------- Estimates we've sent to this GC ---------- */
@@ -1992,7 +1988,7 @@ function renderEstimatesReceived(){
       <div class="file-current-actions" style="margin-top:8px; justify-content:flex-end;">
         ${hasRealLink ? `<button class="file-view-link view-received-btn" data-idx="${idx}" style="border:none; cursor:pointer;">${est.dataUrl.startsWith('data:') ? '📄 View file' : '🔗 Open link'}</button>` : ''}
         ${est.originalEmailLink ? `<a href="${escapeHtml(est.originalEmailLink)}" target="_blank" class="file-view-link" style="text-decoration:none;">📧 View original email</a>` : ''}
-        <button class="file-view-link respond-received-btn" data-idx="${idx}" style="border:none; cursor:pointer;">✉️ Open in Gmail</button>
+        <button class="file-view-link respond-received-btn" data-idx="${idx}" style="border:none; cursor:pointer;">💬 Suggested Reply</button>
         <button class="file-remove-btn" data-idx="${idx}">Remove</button>
       </div>
     `;
@@ -2016,29 +2012,30 @@ function renderEstimatesReceived(){
 }
 
 document.getElementById('estimateReceivedInput').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  if (file.size > MAX_FILE_BYTES){
-    alert('That file is too large (max ~20 MB). Try a smaller file or compress it.');
-    e.target.value = '';
-    return;
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+  for (const file of files){
+    if (file.size > MAX_FILE_BYTES){
+      alert(`"${file.name}" is too large (max ~20 MB) — skipped.`);
+      continue;
+    }
+    try {
+      const url = await uploadFileToDrive(file);
+      currentDetail.estimatesReceived.push({
+        name: file.name,
+        dataUrl: url,
+        uploadedAt: new Date().toLocaleDateString()
+      });
+    } catch (err) {
+      console.error(err);
+      alert(`Could not upload "${file.name}". Make sure the storage backend is connected, then try again.`);
+    }
   }
-  try {
-    const url = await uploadFileToDrive(file);
-    currentDetail.estimatesReceived.push({
-      name: file.name,
-      dataUrl: url,
-      uploadedAt: new Date().toLocaleDateString()
-    });
-    renderEstimatesReceived();
-    queueSave();
-    const flash = document.getElementById('estimateSavedFlash');
-    flash.classList.add('show');
-    setTimeout(() => flash.classList.remove('show'), 1200);
-  } catch (err) {
-    console.error(err);
-    alert('Could not upload that file. Make sure the storage backend is connected, then try again.');
-  }
+  renderEstimatesReceived();
+  queueSave();
+  const flash = document.getElementById('estimateSavedFlash');
+  flash.classList.add('show');
+  setTimeout(() => flash.classList.remove('show'), 1200);
   e.target.value = '';
 });
 
@@ -2082,7 +2079,7 @@ function renderEstimates(highlightIdx){
       <div class="email-body-preview">${escapeHtml(body)}</div>
       <div class="file-current-actions" style="margin-top:8px; justify-content:flex-end;">
         <button class="file-view-link view-sent-btn" data-idx="${idx}" style="border:none; cursor:pointer;">View</button>
-        <button class="file-view-link email-est-btn" data-idx="${idx}" style="border:none; cursor:pointer;">✉️ Open in Gmail</button>
+        <button class="file-view-link email-est-btn" data-idx="${idx}" style="border:none; cursor:pointer;">📋 Copy Email</button>
         <button class="file-remove-btn" data-idx="${idx}">Remove</button>
       </div>
     `;
@@ -2229,30 +2226,33 @@ function openEstimateResponseDraft(toEmail, originalSubject){
 }
 
 document.getElementById('estimateUploadInput').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  if (file.size > MAX_FILE_BYTES){
-    alert('That file is too large (max ~20 MB). Try a smaller file or compress it.');
-    e.target.value = '';
-    return;
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+  let lastIdx = -1;
+  for (const file of files){
+    if (file.size > MAX_FILE_BYTES){
+      alert(`"${file.name}" is too large (max ~20 MB) — skipped.`);
+      continue;
+    }
+    try {
+      const url = await uploadFileToDrive(file);
+      currentDetail.estimates.push({
+        name: file.name,
+        dataUrl: url,
+        uploadedAt: new Date().toLocaleDateString(),
+        sentBy: 'Maria Cuellar (us)'
+      });
+      lastIdx = currentDetail.estimates.length - 1;
+    } catch (err) {
+      console.error(err);
+      alert(`Could not upload "${file.name}". Make sure the storage backend is connected, then try again.`);
+    }
   }
-  try {
-    const url = await uploadFileToDrive(file);
-    currentDetail.estimates.push({
-      name: file.name,
-      dataUrl: url,
-      uploadedAt: new Date().toLocaleDateString(),
-      sentBy: 'Maria Cuellar (us)'
-    });
-    renderEstimates(currentDetail.estimates.length - 1);
-    queueSave();
-    const flash = document.getElementById('estimateSavedFlash');
-    flash.classList.add('show');
-    setTimeout(() => flash.classList.remove('show'), 1200);
-  } catch (err) {
-    console.error(err);
-    alert('Could not upload that file. Make sure the storage backend is connected, then try again.');
-  }
+  renderEstimates(lastIdx);
+  queueSave();
+  const flash = document.getElementById('estimateSavedFlash');
+  flash.classList.add('show');
+  setTimeout(() => flash.classList.remove('show'), 1200);
   e.target.value = '';
 });
 
@@ -2477,28 +2477,18 @@ async function saveGmailAttachmentToVendorForm(messageId, att){
     const b64 = (data.data || '').replace(/-/g, '+').replace(/_/g, '/');
     const dataUrl = `data:${att.mimeType || 'application/octet-stream'};base64,${b64}`;
 
-    currentDetail.uploadedFile = {
+    currentDetail.uploadedFiles.push({
       name: att.filename,
       dataUrl,
       uploadedAt: new Date().toISOString()
-    };
-    renderUploadedFile();
+    });
+    renderUploadedFiles();
     queueSave();
-    alert(`Saved "${att.filename}" to this company's Upload form/PDF section.`);
+    alert(`Saved "${att.filename}" to this company's Forms/PDFs section.`);
   } catch (err) {
     console.error('Could not save attachment to vendor form:', err);
     alert('Could not save that attachment. Try downloading it instead.');
   }
-}
-
-function renderGmailDeadlineSuggestion(bestDueDate){
-  const gdBox = document.getElementById('gmailDeadlineSuggestionBox');
-  gdBox.innerHTML = `<div class="gm-suggestion">📅 Found a due date in these emails: <b>${escapeHtml(bestDueDate)}</b> <button class="cheat-copy-btn" id="useDetectedDeadline">Use this</button></div>`;
-  gdBox.querySelector('#useDetectedDeadline').addEventListener('click', () => {
-    currentDetail.gmailDetectedDeadline = bestDueDate;
-    queueSave();
-    renderDeadlineDisplay(currentVendor);
-  });
 }
 
 async function searchGmailForCurrentVendor(){
@@ -2626,7 +2616,7 @@ async function searchGmailForCurrentVendor(){
         <div class="gm-attachments" id="gm-att-${msg.id}"></div>
         <div class="gm-est-actions" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
           <button class="gm-attachment-btn gm-add-received-btn">📥 Add as received estimate</button>
-          <button class="gm-attachment-btn gm-draft-response-btn">✉️ Draft response</button>
+          <button class="gm-attachment-btn gm-draft-response-btn">💬 Suggested Reply</button>
         </div>
       `;
 
@@ -2743,7 +2733,6 @@ async function searchGmailForCurrentVendor(){
       queueSave();
       const noticeEl = document.getElementById('ocrProgressNotice');
       if (noticeEl) noticeEl.remove();
-      if (bestDueDate) renderGmailDeadlineSuggestion(bestDueDate);
     }
 
     // Automatically add detected estimate/bid requests to "Received from them" — no manual click needed.
@@ -2813,8 +2802,6 @@ async function searchGmailForCurrentVendor(){
         });
       }
     }
-
-    if (bestDueDate) renderGmailDeadlineSuggestion(bestDueDate);
 
     if (anyAcceptancePhrase && !currentDetail.onBiddingList){
       const acceptBox = document.createElement('div');
@@ -2989,21 +2976,15 @@ function bytesToDataUrl(bytes, mime){
 
 let pdfFillCtx = null; // { pdfDoc, form, fields }
 
-document.getElementById('fillPdfBtn').addEventListener('click', () => {
-  const kind = currentDetail.uploadedFile.kind || fileKindFromDataUrl(currentDetail.uploadedFile.dataUrl);
-  if (kind === 'pdf') openPdfFiller();
-  else if (kind === 'excel') openExcelEditor();
-  else if (kind === 'word') openWordViewer();
-});
-
 async function openPdfFiller(){
+  const targetFile = currentDetail.uploadedFiles[fillTargetIndex];
   const statusEl = document.getElementById('pdfFillStatus');
   const box = document.getElementById('pdfFillFieldsBox');
   const saveBtn = document.getElementById('savePdfFillBtn');
   box.innerHTML = '';
   saveBtn.style.display = 'none';
   statusEl.textContent = 'Reading PDF fields…';
-  document.getElementById('pdfFillSub').textContent = currentDetail.uploadedFile.name;
+  document.getElementById('pdfFillSub').textContent = targetFile.name;
   document.getElementById('pdfFillOverlay').classList.add('open');
 
   if (typeof PDFLib === 'undefined'){
@@ -3012,7 +2993,7 @@ async function openPdfFiller(){
   }
 
   try {
-    const bytes = await getFileBytes(currentDetail.uploadedFile.dataUrl);
+    const bytes = await getFileBytes(targetFile.dataUrl);
     const pdfDoc = await PDFLib.PDFDocument.load(bytes);
     const form = pdfDoc.getForm();
     const fields = form.getFields();
@@ -3086,12 +3067,13 @@ document.getElementById('savePdfFillBtn').addEventListener('click', async () => 
 
     const filledBytes = await pdfDoc.save();
     const dataUrl = bytesToDataUrl(filledBytes, 'application/pdf');
-    currentDetail.uploadedFile = {
-      name: currentDetail.uploadedFile.name.replace(/\.pdf$/i, '') + ' (filled).pdf',
+    const original = currentDetail.uploadedFiles[fillTargetIndex];
+    currentDetail.uploadedFiles.push({
+      name: original.name.replace(/\.pdf$/i, '') + ' (filled).pdf',
       dataUrl,
       uploadedAt: new Date().toISOString()
-    };
-    renderUploadedFile();
+    });
+    renderUploadedFiles();
     queueSave();
     document.getElementById('pdfFillOverlay').classList.remove('open');
   } catch (err) {
@@ -3114,13 +3096,14 @@ document.getElementById('pdfFillOverlay').addEventListener('click', (e) => {
 let excelCtx = null; // { workbook, sheetName }
 
 async function openExcelEditor(){
+  const targetFile = currentDetail.uploadedFiles[fillTargetIndex];
   const statusEl = document.getElementById('excelStatus');
   const table = document.getElementById('excelTable');
   const saveBtn = document.getElementById('saveExcelBtn');
   table.innerHTML = '';
   saveBtn.style.display = 'none';
   statusEl.textContent = 'Reading spreadsheet…';
-  document.getElementById('excelFillSub').textContent = currentDetail.uploadedFile.name;
+  document.getElementById('excelFillSub').textContent = targetFile.name;
   document.getElementById('excelFillOverlay').classList.add('open');
 
   if (typeof XLSX === 'undefined'){
@@ -3129,7 +3112,7 @@ async function openExcelEditor(){
   }
 
   try {
-    const bytes = await getFileBytes(currentDetail.uploadedFile.dataUrl);
+    const bytes = await getFileBytes(targetFile.dataUrl);
     const workbook = XLSX.read(bytes, { type: 'array' });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
@@ -3174,12 +3157,13 @@ document.getElementById('saveExcelBtn').addEventListener('click', () => {
     const out = XLSX.write(excelCtx.workbook, { type: 'array', bookType: 'xlsx' });
     const dataUrl = bytesToDataUrl(new Uint8Array(out), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
-    currentDetail.uploadedFile = {
-      name: currentDetail.uploadedFile.name.replace(/\.(xlsx|xls)$/i, '') + ' (edited).xlsx',
+    const original = currentDetail.uploadedFiles[fillTargetIndex];
+    currentDetail.uploadedFiles.push({
+      name: original.name.replace(/\.(xlsx|xls)$/i, '') + ' (edited).xlsx',
       dataUrl,
       uploadedAt: new Date().toISOString()
-    };
-    renderUploadedFile();
+    });
+    renderUploadedFiles();
     queueSave();
     document.getElementById('excelFillOverlay').classList.remove('open');
   } catch (err) {
@@ -3199,11 +3183,12 @@ document.getElementById('excelFillOverlay').addEventListener('click', (e) => {
 
 /* ---------- View Word (.docx) content — read-only preview ---------- */
 async function openWordViewer(){
+  const targetFile = currentDetail.uploadedFiles[fillTargetIndex];
   const statusEl = document.getElementById('wordStatus');
   const box = document.getElementById('wordContentBox');
   box.innerHTML = '';
   statusEl.textContent = 'Reading document…';
-  document.getElementById('wordViewSub').textContent = currentDetail.uploadedFile.name;
+  document.getElementById('wordViewSub').textContent = targetFile.name;
   document.getElementById('wordViewOverlay').classList.add('open');
 
   if (typeof mammoth === 'undefined'){
@@ -3212,7 +3197,7 @@ async function openWordViewer(){
   }
 
   try {
-    const bytes = await getFileBytes(currentDetail.uploadedFile.dataUrl);
+    const bytes = await getFileBytes(targetFile.dataUrl);
     const result = await mammoth.convertToHtml({ arrayBuffer: bytes.buffer });
     box.innerHTML = result.value;
     statusEl.textContent = 'Read-only preview:';
@@ -3246,10 +3231,14 @@ document.getElementById('newItemInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('addItemBtn').click();
 });
 document.getElementById('closeDetailBtn').addEventListener('click', () => {
+  flushSaveNow();
   document.getElementById('detailOverlay').classList.remove('open');
 });
 document.getElementById('detailOverlay').addEventListener('click', (e) => {
-  if (e.target.id === 'detailOverlay') document.getElementById('detailOverlay').classList.remove('open');
+  if (e.target.id === 'detailOverlay'){
+    flushSaveNow();
+    document.getElementById('detailOverlay').classList.remove('open');
+  }
 });
 
 document.getElementById('editNoteBtn').addEventListener('click', () => {
