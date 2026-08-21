@@ -327,6 +327,10 @@
   }
   .pending-item .pi-label{ font-size:13.5px; font-weight:600; color:var(--text); }
   .pending-item .pi-due{ font-size:11.5px; color:var(--warn); font-weight:700; }
+  .pending-item .pi-date-input{
+    background:var(--panel); border:1px solid var(--warn); color:var(--text);
+    border-radius:6px; padding:4px 8px; font-size:12px;
+  }
   .email-body-preview{
     background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:10px 12px;
     font-size:12px; color:#c3d2e0; white-space:pre-wrap; margin-top:10px; max-height:170px; overflow-y:auto; line-height:1.6;
@@ -559,320 +563,6 @@
     </details>
 
     <details class="detail-section">
-<details class="detail-section">
-<summary>🔍 Scan Emails for Deadlines</summary>
-
-<!-- SCAN BUTTON -->
-<div style="margin-bottom: 20px;">
-<button id="scanDeadlinesBtnMain" class="btn primary" style="width: 100%; padding: 12px; font-size: 14px; font-weight: bold;">
-🔍 Scan All Emails for Deadlines
-</button>
-<div id="scanDeadlinesStatus" style="margin-top: 10px; padding: 10px; border-radius: 4px; display: none;"></div>
-</div>
-
-<!-- RESULTS LIST -->
-<div id="scannedDeadlinesList" style="display: none; margin-top: 20px;">
-<h3 style="color: #333; margin-bottom: 15px; font-weight: 600;">Projects with Deadlines Found</h3>
-<div id="deadlinesContainer" style="display: flex; flex-direction: column; gap: 12px;"></div>
-</div>
-
-</details>
-
-<!-- STYLES FOR DEADLINE CARDS -->
-<style>
-.deadline-card {
-background-color: #f8f9fa;
-border: 1px solid #e0e0e0;
-border-radius: 8px;
-padding: 16px;
-margin-bottom: 12px;
-box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-transition: all 0.3s ease;
-}
-
-.deadline-card:hover {
-box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-border-color: #d0d0d0;
-}
-
-.deadline-card-title {
-font-size: 16px;
-font-weight: 600;
-color: #1a1a1a;
-margin-bottom: 8px;
-word-break: break-word;
-}
-
-.deadline-card-deadline {
-font-size: 14px;
-color: #333;
-margin-bottom: 10px;
-display: flex;
-align-items: center;
-gap: 8px;
-}
-
-.deadline-card-deadline strong {
-color: #d9534f;
-font-weight: 600;
-}
-
-.deadline-card-link {
-display: inline-block;
-padding: 8px 14px;
-background-color: #007bff;
-color: white;
-text-decoration: none;
-border-radius: 4px;
-font-size: 13px;
-font-weight: 500;
-transition: background-color 0.2s;
-}
-
-.deadline-card-link:hover {
-background-color: #0056b3;
-}
-
-.scan-status-loading {
-background-color: #d1ecf1;
-color: #0c5460;
-border: 1px solid #bee5eb;
-border-radius: 4px;
-padding: 12px;
-}
-
-.scan-status-success {
-background-color: #d4edda;
-color: #155724;
-border: 1px solid #c3e6cb;
-border-radius: 4px;
-padding: 12px;
-}
-
-.scan-status-error {
-background-color: #f8d7da;
-color: #721c24;
-border: 1px solid #f5c6cb;
-border-radius: 4px;
-padding: 12px;
-}
-
-.spinner {
-display: inline-block;
-width: 14px;
-height: 14px;
-border: 2px solid rgba(0,0,0,0.1);
-border-top-color: #007bff;
-border-radius: 50%;
-animation: spin 0.8s linear infinite;
-margin-right: 8px;
-}
-
-@keyframes spin {
-to { transform: rotate(360deg); }
-}
-</style>
-
-<!-- JAVASCRIPT LOGIC -->
-<script>
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxvvMPexTW3kW1E2iRgOLhc4PiBOJrho5kMwUEq_0xMbZuLVdpeDmSi9-OMGkiqKCNm/exec';
-
-let allEmails = [];
-let scannedDeadlines = [];
-
-document.getElementById('scanDeadlinesBtnMain')?.addEventListener('click', scanEmailsForDeadlines);
-
-async function scanEmailsForDeadlines() {
-const statusDiv = document.getElementById('scanDeadlinesStatus');
-const containerDiv = document.getElementById('scannedDeadlinesList');
-const resultsDiv = document.getElementById('deadlinesContainer');
-const btn = document.getElementById('scanDeadlinesBtnMain');
-
-statusDiv.style.display = 'block';
-statusDiv.className = 'scan-status-loading';
-statusDiv.innerHTML = '<div class="spinner"></div>Scanning emails for deadlines...';
-btn.disabled = true;
-containerDiv.style.display = 'none';
-resultsDiv.innerHTML = '';
-scannedDeadlines = [];
-
-try {
-await getAllEmails();
-
-if (allEmails.length === 0) {
-throw new Error('No emails found. Make sure Gmail is connected.');
-}
-
-statusDiv.innerHTML = `<div class="spinner"></div>Processing ${allEmails.length} emails...`;
-
-for (let i = 0; i < allEmails.length; i++) {
-const email = allEmails[i];
-statusDiv.innerHTML = `<div class="spinner"></div>Processing email ${i + 1} of ${allEmails.length}...`;
-await processEmailForDeadlines(email);
-}
-
-if (scannedDeadlines.length > 0) {
-displayDeadlines();
-statusDiv.className = 'scan-status-success';
-statusDiv.innerHTML = `✅ Found ${scannedDeadlines.length} deadline(s) from ${allEmails.length} email(s)`;
-containerDiv.style.display = 'block';
-} else {
-statusDiv.className = 'scan-status-error';
-statusDiv.innerHTML = '⚠️ No deadlines found in emails. Make sure emails contain images with text.';
-containerDiv.style.display = 'none';
-}
-
-} catch (error) {
-console.error('Error scanning deadlines:', error);
-statusDiv.className = 'scan-status-error';
-statusDiv.innerHTML = `❌ Error: ${error.message}`;
-containerDiv.style.display = 'none';
-} finally {
-btn.disabled = false;
-}
-}
-
-async function getAllEmails() {
-const cache = window.gmailRawHtmlCache || {};
-allEmails = Object.entries(cache).map(([id, html]) => ({
-id: id,
-html: html
-}));
-
-if (allEmails.length === 0 && window.emailsData) {
-allEmails = window.emailsData;
-}
-}
-
-async function processEmailForDeadlines(email) {
-try {
-const html = email.html || email.payload?.parts?.[0]?.body?.data || '';
-if (!html) return;
-
-const images = extractImagesFromHtml(html);
-
-for (const imgData of images) {
-const ocrResult = await callOCR(imgData);
-if (ocrResult && ocrResult.text) {
-const deadline = extractDeadlineFromText(ocrResult.text);
-if (deadline) {
-scannedDeadlines.push({
-projectTitle: extractProjectTitle(html),
-deadline: deadline.date,
-deadlineType: deadline.type,
-emailId: email.id,
-emailSubject: email.subject || 'Unknown Project'
-});
-}
-}
-}
-} catch (error) {
-console.warn('Error processing email:', error);
-}
-}
-
-function extractImagesFromHtml(html) {
-const images = [];
-const imgRegex = /<img[^>]+src="([^"]+)"[^>]*>/gi;
-let match;
-
-while ((match = imgRegex.exec(html)) !== null) {
-const src = match[1];
-if (src.startsWith('data:image')) {
-images.push(src);
-}
-}
-
-return images;
-}
-
-async function callOCR(imageData) {
-try {
-const response = await fetch(APPS_SCRIPT_URL, {
-method: 'POST',
-body: JSON.stringify({
-action: 'ocrImage',
-imageData: imageData,
-imageUrl: imageData
-})
-});
-
-const result = await response.json();
-return result;
-} catch (error) {
-console.warn('OCR failed for image:', error);
-return null;
-}
-}
-
-function extractDeadlineFromText(text) {
-const deadlineKeywords = ['due', 'deadline', 'bid until', 'submit by', 'date', 'expired', 'required by', 'due date'];
-const datePatterns = [
-/\b(\d{1,2}\/\d{1,2}\/\d{2,4})\b/g,
-/\b(\d{1,2}-\d{1,2}-\d{2,4})\b/g,
-/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b/gi,
-];
-
-const lowerText = text.toLowerCase();
-const hasDeadlineKeyword = deadlineKeywords.some(kw => lowerText.includes(kw));
-
-if (!hasDeadlineKeyword) return null;
-
-for (const pattern of datePatterns) {
-const dateMatch = text.match(pattern);
-if (dateMatch) {
-return {
-date: dateMatch[0],
-type: 'deadline'
-};
-}
-}
-
-return null;
-}
-
-function extractProjectTitle(html) {
-const subjectMatch = html.match(/<title>([^<]+)<\/title>/i);
-if (subjectMatch) return subjectMatch[1];
-
-const headerMatch = html.match(/<h[12][^>]*>([^<]+)<\/h[12]>/i);
-if (headerMatch) return headerMatch[1];
-
-return 'Untitled Project';
-}
-
-function displayDeadlines() {
-const container = document.getElementById('deadlinesContainer');
-container.innerHTML = '';
-
-scannedDeadlines.forEach((item) => {
-const card = document.createElement('div');
-card.className = 'deadline-card';
-card.innerHTML = `
-<div class="deadline-card-title">${escapeHtml(item.projectTitle)}</div>
-<div class="deadline-card-deadline">
-<strong>📅 ${escapeHtml(item.deadline)}</strong>
-</div>
-<a href="#" class="deadline-card-link" onclick="openEmailForDeadline('${escapeHtml(item.emailId)}'); return false;">
-View Original Email →
-</a>
-`;
-container.appendChild(card);
-});
-}
-
-function openEmailForDeadline(emailId) {
-if (window.openRawEmailViewer) {
-window.openRawEmailViewer(emailId, 'Deadline Email');
-}
-}
-
-function escapeHtml(text) {
-const div = document.createElement('div');
-div.textContent = text;
-return div.innerHTML;
-}
-</script>
       <summary>📅 Deadlines</summary>
       <div class="cheat-note" id="deadlineDisplay">No deadline info in the Sheet yet for this vendor.</div>
       <div id="gmailDeadlineSuggestionBox"></div>
@@ -893,7 +583,7 @@ return div.innerHTML;
       <div id="estimatesPendingBox"></div>
       <div class="add-item-row">
         <input type="text" id="newPendingLabel" placeholder="e.g. Estimate for Toastique Delray Beach">
-        <input type="text" id="newPendingDue" placeholder="Due date (optional)" style="max-width:140px;">
+        <input type="date" id="newPendingDue" style="max-width:160px;">
         <button id="addPendingBtn">+ Add</button>
       </div>
 
@@ -1082,6 +772,38 @@ return div.innerHTML;
   </div>
 </div>
 
+<!-- Email content to copy manually into Gmail — no mailto/compose links, just subject + body to copy -->
+<div class="overlay" id="emailCopyOverlay">
+  <div class="modal" style="max-width:600px;">
+    <div class="detail-head">
+      <div>
+        <h2>Email para copiar</h2>
+        <div class="sub">Copia el asunto y el contenido, y pégalos en un correo nuevo de Gmail</div>
+      </div>
+      <button class="close-x" id="closeEmailCopyBtn">✕</button>
+    </div>
+    <div class="cheat-note" id="emailCopyNote" style="display:none; margin-bottom:14px;"></div>
+    <div class="field">
+      <label>Subject</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="emailCopySubject" readonly style="flex:1; background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:7px; padding:9px 10px; font-size:13px;">
+        <button class="cheat-copy-btn" id="copySubjectBtn">Copy</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Body</label>
+      <textarea id="emailCopyBody" readonly style="min-height:220px;"></textarea>
+      <div style="text-align:right; margin-top:6px;">
+        <button class="cheat-copy-btn" id="copyBodyBtn">Copy body</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn primary" id="copyBothBtn">Copy subject + body</button>
+      <button class="btn" id="closeEmailCopyBtn2">Close</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1159,6 +881,15 @@ function parseFlexDate(str){
   if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
   const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
+}
+
+function toISODate(d){
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function parseFlexDateToISO(str){
+  const d = parseFlexDate(str);
+  return d ? toISODate(d) : '';
 }
 
 function daysUntil(dateStr){
@@ -2194,15 +1925,21 @@ function renderEstimatesPending(){
     const row = document.createElement('div');
     row.className = 'pending-item';
     row.innerHTML = `
-      <div>
+      <div style="flex:1; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <span class="pi-label">${escapeHtml(p.label)}</span>
-        ${p.due ? `<span class="pi-due"> — Due ${escapeHtml(p.due)}</span>` : ''}
+        ${p.due && !/^\d{4}-\d{2}-\d{2}$/.test(p.due) ? `<span class="pi-due">(detected: ${escapeHtml(p.due)})</span>` : ''}
+        <input type="date" class="pi-date-input" value="${escapeHtml(p.dueDate || (p.due && /^\d{4}-\d{2}-\d{2}$/.test(p.due) ? p.due : ''))}" title="Due date">
       </div>
       <div class="file-current-actions">
         <button class="file-view-link" data-idx="${idx}" style="border:none; cursor:pointer;">✓ Mark as sent</button>
         <button class="file-remove-btn" data-idx="${idx}">Remove</button>
       </div>
     `;
+    row.querySelector('.pi-date-input').addEventListener('change', (e) => {
+      p.dueDate = e.target.value;
+      p.due = e.target.value;
+      queueSave();
+    });
     row.querySelector('.file-view-link').addEventListener('click', () => {
       currentDetail.estimatesPending.splice(idx, 1);
       renderEstimatesPending();
@@ -2223,7 +1960,7 @@ document.getElementById('addPendingBtn').addEventListener('click', () => {
   const label = document.getElementById('newPendingLabel').value.trim();
   const due = document.getElementById('newPendingDue').value.trim();
   if (!label) return;
-  currentDetail.estimatesPending.push({ label, due });
+  currentDetail.estimatesPending.push({ label, due, dueDate: due });
   document.getElementById('newPendingLabel').value = '';
   document.getElementById('newPendingDue').value = '';
   renderEstimatesPending();
@@ -2364,14 +2101,46 @@ function renderEstimates(highlightIdx){
   });
 }
 
+function showEmailCopyModal(subject, body, note){
+  document.getElementById('emailCopySubject').value = subject;
+  document.getElementById('emailCopyBody').value = body;
+  const noteEl = document.getElementById('emailCopyNote');
+  if (note) { noteEl.style.display = 'block'; noteEl.textContent = note; }
+  else { noteEl.style.display = 'none'; }
+  document.getElementById('emailCopyOverlay').classList.add('open');
+}
+
+async function copyToClipboard(text, btn, resetLabel){
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = 'Copied ✓';
+    setTimeout(() => { btn.textContent = resetLabel; }, 1200);
+  } catch (e) {
+    alert('Could not copy automatically — select the text manually.');
+  }
+}
+
+document.getElementById('copySubjectBtn').addEventListener('click', () => {
+  copyToClipboard(document.getElementById('emailCopySubject').value, document.getElementById('copySubjectBtn'), 'Copy');
+});
+document.getElementById('copyBodyBtn').addEventListener('click', () => {
+  copyToClipboard(document.getElementById('emailCopyBody').value, document.getElementById('copyBodyBtn'), 'Copy body');
+});
+document.getElementById('copyBothBtn').addEventListener('click', () => {
+  const combined = `Subject: ${document.getElementById('emailCopySubject').value}\n\n${document.getElementById('emailCopyBody').value}`;
+  copyToClipboard(combined, document.getElementById('copyBothBtn'), 'Copy subject + body');
+});
+document.getElementById('closeEmailCopyBtn').addEventListener('click', () => document.getElementById('emailCopyOverlay').classList.remove('open'));
+document.getElementById('closeEmailCopyBtn2').addEventListener('click', () => document.getElementById('emailCopyOverlay').classList.remove('open'));
+document.getElementById('emailCopyOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'emailCopyOverlay') document.getElementById('emailCopyOverlay').classList.remove('open');
+});
+
 function openEstimateEmailDraft(est){
   const vendorName = currentVendor ? currentVendor.name : 'this vendor';
   const subject = `Estimate from Westbridge Demolition — ${vendorName}`;
   const body = buildEstimateEmailBody(vendorName);
-
-  alert(`Don't forget: a Gmail draft will open in a new tab, but it can't attach files automatically.\n\nAttach this file before sending:\n${est.name}\n\n(Tip: click "View" first to download it if it's not already on your computer.)`);
-
-  openMailtoLink(null, subject, body);
+  showEmailCopyModal(subject, body, `📎 Remember to attach: ${est.name} (click "View" first if you need to download it)`);
 }
 
 // Some platforms (iSqFt in particular) render fields like "Bid Due Date" as a picture
@@ -2452,19 +2221,11 @@ O 561-928-8035
 W westbridgedemolition.com`;
 }
 
-function openMailtoLink(toEmail, subject, body){
-  const to = toEmail ? (toEmail.match(/[\w.+-]+@[\w-]+\.[\w.-]+/)?.[0] || '') : '';
-  const gmailComposeUrl =
-    `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}` +
-    `&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  window.open(gmailComposeUrl, '_blank');
-}
-
 function openEstimateResponseDraft(toEmail, originalSubject){
   const projectName = extractProjectName(originalSubject);
   const subject = `Re: ${originalSubject || 'Estimate Request'}`;
   const body = buildEstimateResponseBody(projectName);
-  openMailtoLink(toEmail, subject, body);
+  showEmailCopyModal(subject, body);
 }
 
 document.getElementById('estimateUploadInput').addEventListener('change', async (e) => {
@@ -2792,8 +2553,8 @@ async function searchGmailForCurrentVendor(){
     const alreadyAdded = new Set((currentDetail.estimatesReceived || []).map(e => e.sourceMsgId).filter(Boolean));
     const alreadyPending = new Set((currentDetail.estimatesPending || []).map(p => p.sourceMsgId).filter(Boolean));
     const autoAddCandidates = [];
-    const autoDueDateCandidates = [];
     const ocrCandidates = []; // messages with no text-based due date but a date-hiding image found
+    const genericProjectCandidates = []; // every project found in subject/content, regardless of pattern match — gets a name + empty date field to fill in
 
     details.forEach(msg => {
       const headers = (msg.payload && msg.payload.headers) || [];
@@ -2812,15 +2573,21 @@ async function searchGmailForCurrentVendor(){
       if (attachments.length){ anyAttachments = true; if (!bestAttachment) bestAttachment = { messageId: msg.id, att: attachments[0] }; }
       if (acceptancePatterns.test(bodyText || snippet)) anyAcceptancePhrase = true;
       const dueDateFound = extractDueDate(subject + ' ' + snippet + ' ' + bodyText);
-      if (dueDateFound){
-        if (!bestDueDate) bestDueDate = dueDateFound;
-        if (!alreadyPending.has(msg.id)){
-          autoDueDateCandidates.push({ msgId: msg.id, projectName: extractProjectName(subject), due: dueDateFound });
-        }
-      } else if (!alreadyPending.has(msg.id) && estimateRequestPattern.test(subject + ' ' + snippet + ' ' + bodyText)){
-        const dateImages = findDateImagesInHtml(window.gmailRawHtmlCache[msg.id]);
-        if (dateImages.length){
-          ocrCandidates.push({ msgId: msg.id, projectName: extractProjectName(subject), imageUrl: dateImages[0].src });
+      if (dueDateFound && !bestDueDate) bestDueDate = dueDateFound;
+
+      // Capture every project this vendor emailed about — not only ones that look like a
+      // formal "estimate request" — so the project name + a due-date field always shows up
+      // in "Pending / to send". Skip pure automated notifications (calendar pings, etc.).
+      if (!alreadyPending.has(msg.id) && !automatedSenderPattern.test(from)){
+        if (!dueDateFound){
+          const dateImages = findDateImagesInHtml(window.gmailRawHtmlCache[msg.id]);
+          if (dateImages.length){
+            ocrCandidates.push({ msgId: msg.id, projectName: extractProjectName(subject), imageUrl: dateImages[0].src });
+          } else {
+            genericProjectCandidates.push({ msgId: msg.id, projectName: extractProjectName(subject), due: '' });
+          }
+        } else {
+          genericProjectCandidates.push({ msgId: msg.id, projectName: extractProjectName(subject), due: dueDateFound });
         }
       }
       if (!bestSenderEmail && !automatedSenderPattern.test(from)){
@@ -2926,12 +2693,14 @@ async function searchGmailForCurrentVendor(){
       box.appendChild(card);
     });
 
-    // Automatically add detected due dates (with project name) to "Pending / to send" — no manual entry needed.
-    if (autoDueDateCandidates.length){
-      autoDueDateCandidates.forEach(cand => {
+    // Automatically add every detected project (with project name) to "Pending / to send" —
+    // each gets a real date field ready to fill in, whether or not a due date was found in the text.
+    if (genericProjectCandidates.length){
+      genericProjectCandidates.forEach(cand => {
         currentDetail.estimatesPending.push({
           label: cand.projectName,
           due: cand.due,
+          dueDate: parseFlexDateToISO(cand.due),
           sourceMsgId: cand.msgId
         });
       });
@@ -2952,16 +2721,22 @@ async function searchGmailForCurrentVendor(){
         try {
           const ocrText = await ocrImageViaBackend(cand.imageUrl);
           const ocrDate = extractDueDate(ocrText) || (ocrText.match(/\d{1,2}\/\d{1,2}\/\d{2,4}/) || [])[0] || (/[A-Za-z]+\s+\d{1,2},?\s*\d{4}/.exec(ocrText) || [])[0];
-          if (ocrDate){
-            currentDetail.estimatesPending.push({
-              label: cand.projectName,
-              due: ocrDate,
-              sourceMsgId: cand.msgId
-            });
-            if (!bestDueDate) bestDueDate = ocrDate;
-          }
+          currentDetail.estimatesPending.push({
+            label: cand.projectName,
+            due: ocrDate || '',
+            dueDate: ocrDate ? parseFlexDateToISO(ocrDate) : '',
+            sourceMsgId: cand.msgId
+          });
+          if (ocrDate && !bestDueDate) bestDueDate = ocrDate;
         } catch (err) {
           console.error('OCR failed for', cand.msgId, err);
+          // Still log the project even if OCR failed — just without a pre-filled date.
+          currentDetail.estimatesPending.push({
+            label: cand.projectName,
+            due: '',
+            dueDate: '',
+            sourceMsgId: cand.msgId
+          });
         }
       }
       renderEstimatesPending();
