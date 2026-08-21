@@ -1497,7 +1497,7 @@ function renderCompanyDocs(){
         const file = e.target.files[0];
         if (!file) return;
         if (file.size > MAX_FILE_BYTES){
-          alert('That file is too large (max ~20 MB).');
+          alert('That file is too large (max ~25 MB).');
           e.target.value = '';
           return;
         }
@@ -1570,7 +1570,7 @@ function renderCustomCompanyDocs(){
         const file = e.target.files[0];
         if (!file) return;
         if (file.size > MAX_FILE_BYTES){
-          alert('That file is too large (max ~20 MB).');
+          alert('That file is too large (max ~25 MB).');
           e.target.value = '';
           return;
         }
@@ -1955,7 +1955,7 @@ document.getElementById('bidCheckbox').addEventListener('change', () => {
   renderBidCheckbox();
   flushSaveNow();
 });
-const MAX_FILE_BYTES = 20 * 1024 * 1024; // ~20MB — files now go to Google Drive, not the Sheet, so this is much more generous
+const MAX_FILE_BYTES = 25 * 1024 * 1024; // ~25MB — Apps Script's doPost has a hard ceiling around 50MB, and base64-encoding a file inflates it by ~33%, so 25MB is close to the safe practical max
 
 // Uploads now go through Google Drive (via the Apps Script backend) instead of being
 // embedded as base64 directly in the Sheet — Sheets cells cap out at 50,000 characters,
@@ -1989,7 +1989,7 @@ document.getElementById('fileUploadInput').addEventListener('change', async (e) 
   if (!files.length) return;
   for (const file of files){
     if (file.size > MAX_FILE_BYTES){
-      alert(`"${file.name}" is too large (max ~20 MB) — skipped.`);
+      alert(`"${file.name}" is too large (max ~25 MB) — skipped.`);
       continue;
     }
     try {
@@ -2112,7 +2112,7 @@ document.getElementById('estimateReceivedInput').addEventListener('change', asyn
   if (!files.length) return;
   for (const file of files){
     if (file.size > MAX_FILE_BYTES){
-      alert(`"${file.name}" is too large (max ~20 MB) — skipped.`);
+      alert(`"${file.name}" is too large (max ~25 MB) — skipped.`);
       continue;
     }
     try {
@@ -2327,7 +2327,7 @@ document.getElementById('estimateUploadInput').addEventListener('change', async 
   let lastIdx = -1;
   for (const file of files){
     if (file.size > MAX_FILE_BYTES){
-      alert(`"${file.name}" is too large (max ~20 MB) — skipped.`);
+      alert(`"${file.name}" is too large (max ~25 MB) — skipped.`);
       continue;
     }
     try {
@@ -3021,7 +3021,7 @@ document.getElementById('addEmailLogBtn').addEventListener('click', () => {
 
   if (hasFile && file){
     if (file.size > MAX_FILE_BYTES){
-      alert('That file is too large (max ~20 MB).');
+      alert('That file is too large (max ~25 MB).');
       return;
     }
     uploadFileToDrive(file).then(url => {
