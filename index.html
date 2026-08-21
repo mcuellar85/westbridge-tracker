@@ -1498,7 +1498,7 @@ function renderCompanyDocs(){
           saveCompanyDocs();
         } catch (err) {
           console.error(err);
-          alert('Could not upload that file. Make sure the storage backend is connected, then try again.');
+          alert('Could not upload that file: ' + (err.message || 'unknown error') + '\n\nCheck that the storage backend is connected, then try again.');
           e.target.value = '';
         }
       });
@@ -1901,7 +1901,7 @@ document.getElementById('fileUploadInput').addEventListener('change', async (e) 
       currentDetail.uploadedFiles.push({ name: file.name, dataUrl: url, uploadedAt: new Date().toISOString() });
     } catch (err) {
       console.error(err);
-      alert(`Could not upload "${file.name}". Make sure the storage backend is connected, then try again.`);
+      alert(`Could not upload "${file.name}": ${err.message || 'unknown error'}\n\nCheck that the storage backend is connected, then try again.`);
     }
   }
   renderUploadedFiles();
@@ -2028,7 +2028,7 @@ document.getElementById('estimateReceivedInput').addEventListener('change', asyn
       });
     } catch (err) {
       console.error(err);
-      alert(`Could not upload "${file.name}". Make sure the storage backend is connected, then try again.`);
+      alert(`Could not upload "${file.name}": ${err.message || 'unknown error'}\n\nCheck that the storage backend is connected, then try again.`);
     }
   }
   renderEstimatesReceived();
@@ -2245,7 +2245,7 @@ document.getElementById('estimateUploadInput').addEventListener('change', async 
       lastIdx = currentDetail.estimates.length - 1;
     } catch (err) {
       console.error(err);
-      alert(`Could not upload "${file.name}". Make sure the storage backend is connected, then try again.`);
+      alert(`Could not upload "${file.name}": ${err.message || 'unknown error'}\n\nCheck that the storage backend is connected, then try again.`);
     }
   }
   renderEstimates(lastIdx);
@@ -2933,7 +2933,7 @@ document.getElementById('addEmailLogBtn').addEventListener('click', () => {
       finish();
     }).catch(err => {
       console.error(err);
-      alert('Could not upload that file. Make sure the storage backend is connected, then try again.');
+      alert('Could not upload that file: ' + (err.message || 'unknown error') + '\n\nCheck that the storage backend is connected, then try again.');
     });
   } else {
     finish();
