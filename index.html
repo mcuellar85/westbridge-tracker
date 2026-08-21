@@ -748,6 +748,11 @@
     </div>
     <p class="cheat-note">These are shared across all vendors — no need to re-upload them on each company's page. Each GC may still require a fresh COI naming them as Certificate Holder; check with the broker before reusing this one.</p>
     <div id="companyDocsBox"></div>
+    <div id="customCompanyDocsBox"></div>
+    <div class="add-item-row">
+      <input type="text" id="newCompanyDocLabel" placeholder="Name of the new document (e.g. Safety Program, EMR Letter)...">
+      <button id="addCompanyDocBtn">+ Add</button>
+    </div>
   </div>
 </div>
 
@@ -1419,7 +1424,8 @@ function defaultCompanyDocs(){
     w9: null,
     license: null,
     coi: null,
-    brochure: null
+    brochure: null,
+    customDocs: []
   };
 }
 let companyDocsData = null;
@@ -1427,7 +1433,11 @@ let companyDocsData = null;
 async function loadCompanyDocs(){
   try {
     const res = await storage.get(COMPANY_DOCS_KEY, true);
-    if (res && res.value) return JSON.parse(res.value);
+    if (res && res.value) {
+      const parsed = JSON.parse(res.value);
+      if (!Array.isArray(parsed.customDocs)) parsed.customDocs = [];
+      return parsed;
+    }
   } catch (e) { /* none saved yet */ }
   return defaultCompanyDocs();
 }
@@ -1506,7 +1516,93 @@ function renderCompanyDocs(){
 
     box.appendChild(wrap);
   });
+  renderCustomCompanyDocs();
 }
+
+function renderCustomCompanyDocs(){
+  const box = document.getElementById('customCompanyDocsBox');
+  box.innerHTML = '';
+  (companyDocsData.customDocs || []).forEach((entry, idx) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'file-upload-box';
+    wrap.style.marginBottom = '14px';
+    if (entry.doc) wrap.classList.add('has-file');
+
+    wrap.innerHTML = `
+      <div class="section-title" style="margin-top:0; display:flex; align-items:center; justify-content:space-between;">
+        <span>${escapeHtml(entry.label)}</span>
+        <button class="ci-remove custom-doc-delete-btn" title="Remove this document type">✕</button>
+      </div>
+      ${entry.doc ? `
+        <div class="file-current" style="display:flex;">
+          <span class="file-name">${escapeHtml(entry.doc.name)}</span>
+          <div class="file-current-actions">
+            <button class="file-view-link custom-view-btn" style="border:none; cursor:pointer;">View</button>
+            <button class="file-remove-btn custom-remove-file-btn">Remove</button>
+          </div>
+        </div>
+      ` : `
+        <label class="file-input-label" for="customCompanyDocInput-${idx}">📎 Upload ${escapeHtml(entry.label)}</label>
+        <input type="file" id="customCompanyDocInput-${idx}" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*">
+      `}
+    `;
+
+    wrap.querySelector('.custom-doc-delete-btn').addEventListener('click', () => {
+      if (!confirm(`Remove "${entry.label}" from this list? ${entry.doc ? 'The uploaded file itself stays in Drive.' : ''}`)) return;
+      companyDocsData.customDocs.splice(idx, 1);
+      renderCustomCompanyDocs();
+      saveCompanyDocs();
+    });
+
+    if (entry.doc){
+      wrap.querySelector('.custom-view-btn').addEventListener('click', () => {
+        if (entry.doc.dataUrl.startsWith('data:')) openFileSafely(entry.doc.dataUrl, entry.doc.name);
+        else window.open(entry.doc.dataUrl, '_blank');
+      });
+      wrap.querySelector('.custom-remove-file-btn').addEventListener('click', () => {
+        if (!confirm(`Remove the uploaded file for "${entry.label}"?`)) return;
+        entry.doc = null;
+        renderCustomCompanyDocs();
+        saveCompanyDocs();
+      });
+    } else {
+      wrap.querySelector('input[type=file]').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > MAX_FILE_BYTES){
+          alert('That file is too large (max ~20 MB).');
+          e.target.value = '';
+          return;
+        }
+        try {
+          const url = await uploadFileToDrive(file);
+          entry.doc = { name: file.name, dataUrl: url, uploadedAt: new Date().toLocaleDateString() };
+          renderCustomCompanyDocs();
+          saveCompanyDocs();
+        } catch (err) {
+          console.error(err);
+          alert('Could not upload that file: ' + (err.message || 'unknown error') + '\n\nCheck that the storage backend is connected, then try again.');
+          e.target.value = '';
+        }
+      });
+    }
+
+    box.appendChild(wrap);
+  });
+}
+
+document.getElementById('addCompanyDocBtn').addEventListener('click', () => {
+  const input = document.getElementById('newCompanyDocLabel');
+  const label = input.value.trim();
+  if (!label) return;
+  companyDocsData.customDocs.push({ id: 'custom-' + Date.now(), label, doc: null });
+  input.value = '';
+  renderCustomCompanyDocs();
+  saveCompanyDocs();
+});
+document.getElementById('newCompanyDocLabel').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('addCompanyDocBtn').click();
+});
 
 document.getElementById('companyDocsBtn').addEventListener('click', async () => {
   companyDocsData = await loadCompanyDocs();
