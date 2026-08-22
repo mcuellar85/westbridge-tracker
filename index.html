@@ -1218,6 +1218,25 @@ function saveCheatSheetActive(){
   else saveCheatTemplate();
 }
 
+// Shared (not per-row) debounce for field edits — lets us flush it on demand before
+// switching vendors or closing the panel, so a pending edit from Company A can never
+// land under Company B's key just because the 400ms timer hadn't fired yet.
+let cheatFieldsSaveTimer = null;
+function queueCheatFieldsSave(){
+  clearTimeout(cheatFieldsSaveTimer);
+  cheatFieldsSaveTimer = setTimeout(() => {
+    cheatFieldsSaveTimer = null;
+    saveCheatSheetActive();
+  }, 400);
+}
+function flushCheatFieldsSave(){
+  if (cheatFieldsSaveTimer){
+    clearTimeout(cheatFieldsSaveTimer);
+    cheatFieldsSaveTimer = null;
+    saveCheatSheetActive();
+  }
+}
+
 function renderCheatSheet(){
   const box = document.getElementById('cheatFieldsBox');
   box.innerHTML = '';
@@ -1235,11 +1254,9 @@ function renderCheatSheet(){
     const input = row.querySelector('input');
     const copyBtn = row.querySelector('.cheat-copy-btn');
     const removeBtn = row.querySelector('.ci-remove');
-    let saveT = null;
     input.addEventListener('input', () => {
       item.value = input.value;
-      clearTimeout(saveT);
-      saveT = setTimeout(saveCheatSheetActive, 400);
+      queueCheatFieldsSave();
     });
     copyBtn.addEventListener('click', async () => {
       try {
@@ -1262,6 +1279,8 @@ function renderCheatSheet(){
 }
 
 async function openCheatSheet(mode, vendorName){
+  flushCheatFieldsSave();
+  flushMissingInfoSave();
   cheatSheetMode = mode;
   cheatSheetVendorName = vendorName || null;
   const missingBox = document.getElementById('missingInfoSection');
@@ -1345,11 +1364,13 @@ function flushMissingInfoSave(){
   }
 }
 document.getElementById('closeCheatBtn').addEventListener('click', () => {
+  flushCheatFieldsSave();
   flushMissingInfoSave();
   document.getElementById('cheatOverlay').classList.remove('open');
 });
 document.getElementById('cheatOverlay').addEventListener('click', (e) => {
   if (e.target.id === 'cheatOverlay'){
+    flushCheatFieldsSave();
     flushMissingInfoSave();
     document.getElementById('cheatOverlay').classList.remove('open');
   }
@@ -2751,10 +2772,13 @@ async function searchGmailForCurrentVendor(){
       const dueDateFound = extractDueDate(subject + ' ' + snippet + ' ' + bodyText);
       if (dueDateFound && !bestDueDate) bestDueDate = dueDateFound;
 
-      // Capture every project this vendor emailed about — not only ones that look like a
-      // formal "estimate request" — so the project name + a due-date field always shows up
-      // in "Pending / to send". Skip pure automated notifications (calendar pings, etc.).
-      if (!alreadyPending.has(msg.id) && !automatedSenderPattern.test(from)){
+      // Only auto-add a message as a "project" if it actually shows a real signal that
+      // it's about this vendor's work — either a due date was found, or the text reads
+      // like an estimate/bid request. Just appearing in the search results isn't enough:
+      // that let generic company-wide documents (prequal forms, safety manuals, etc.)
+      // get added even when they had nothing to do with this specific vendor.
+      const looksLikeEstimateRequest = estimateRequestPattern.test(subject + ' ' + snippet + ' ' + bodyText);
+      if (!alreadyPending.has(msg.id) && !automatedSenderPattern.test(from) && (dueDateFound || looksLikeEstimateRequest)){
         if (!dueDateFound){
           const dateImages = findDateImagesInHtml(window.gmailRawHtmlCache[msg.id]);
           if (dateImages.length){
