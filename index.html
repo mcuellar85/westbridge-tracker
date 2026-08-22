@@ -316,6 +316,18 @@
     #cheatFieldsBox{ grid-template-columns: 1fr; }
   }
 
+  /* The Cheat Sheet modal is intentionally light/white (not the dark tracker theme) for easier reading */
+  #cheatModalBox #cheatFieldsBox .cheat-row{ background:#f3f5f9; border-color:#dde3ea; }
+  #cheatModalBox .cheat-row .cheat-label{ color:#64748b; }
+  #cheatModalBox .cheat-row input{ color:#1b2a3d; }
+  #cheatModalBox .cheat-copy-btn{ background:#ffffff; border-color:#dde3ea; color:#64748b; }
+  #cheatModalBox .cheat-copy-btn:hover{ border-color:#FF6A1A; color:#1b2a3d; }
+  #cheatModalBox .cheat-copy-btn.copied{ border-color:#1f9d55; color:#1f9d55; }
+  #cheatModalBox .ci-remove{ color:#94a3b8; }
+  #cheatModalBox .ci-remove:hover{ color:#d1453d; }
+  #cheatModalBox .btn{ background:#f3f5f9; border-color:#dde3ea; color:#1b2a3d; }
+  #cheatModalBox .btn.primary{ background:#FF6A1A; border-color:#FF6A1A; color:#ffffff; }
+
   .estimate-item, .email-log-item{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
     background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:10px;
@@ -645,19 +657,24 @@
 
 <!-- Company cheat sheet: reusable answers for GC prequal forms -->
 <div class="overlay" id="cheatOverlay">
-  <div class="modal detail-modal" style="max-width:820px;">
-    <div class="detail-head">
+  <div class="modal detail-modal" id="cheatModalBox" style="max-width:820px; background:#ffffff; color:#1b2a3d; border:1px solid #dde3ea;">
+    <div class="detail-head" style="background:#ffffff;">
       <div>
-        <h2 id="cheatModalTitle">Cheat Sheet</h2>
-        <div class="sub" id="cheatModalSub">—</div>
+        <h2 id="cheatModalTitle" style="color:#1b2a3d;">Cheat Sheet</h2>
+        <div class="sub" id="cheatModalSub" style="color:#64748b;">—</div>
       </div>
-      <button class="close-x" id="closeCheatBtn">✕</button>
+      <button class="close-x" id="closeCheatBtn" style="color:#64748b;">✕</button>
     </div>
-    <p class="cheat-note" id="cheatModalNote">Click "Copy" next to any field to copy it to your clipboard, then paste it into the GC's website.</p>
+    <p class="cheat-note" id="cheatModalNote" style="background:#f3f5f9; color:#1b2a3d; border:1px solid #dde3ea;">Click "Copy" next to any field to copy it to your clipboard, then paste it into the GC's website.</p>
     <div id="cheatFieldsBox"></div>
     <div class="add-item-row">
-      <input type="text" id="newCheatFieldInput" placeholder="Add another field (e.g. Portal Username)...">
-      <button id="addCheatFieldBtn">+ Add</button>
+      <input type="text" id="newCheatFieldInput" placeholder="Add another field (e.g. Portal Username)..." style="background:#ffffff; border:1px solid #dde3ea; color:#1b2a3d;">
+      <button id="addCheatFieldBtn" style="background:#f3f5f9; border:1px dashed #dde3ea; color:#64748b;">+ Add</button>
+    </div>
+    <div id="missingInfoSection" style="display:none; margin-top:20px; padding-top:16px; border-top:1px solid #dde3ea;">
+      <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:#d1453d; font-weight:800; margin-bottom:8px;">❓ Missing Information / Still Need</div>
+      <p style="font-size:12.5px; color:#64748b; margin:0 0 8px;">Jot down what's still pending or unknown for this specific company — questions asked, data you're waiting on, etc.</p>
+      <textarea id="missingInfoTextarea" placeholder="e.g. Need Vladimir's phone/email for Qualifier Contact. Need EMR rates for last 3 years. Waiting on bonding capacity confirmation..." style="width:100%; min-height:140px; background:#ffffff; border:1px solid #dde3ea; color:#1b2a3d; border-radius:7px; padding:10px 12px; font-size:13px; font-family:inherit; resize:vertical;"></textarea>
     </div>
     <div class="modal-actions" style="justify-content:flex-start; margin-top:16px;">
       <button class="btn primary" id="downloadCheatBtn">⬇ Download as text file</button>
@@ -1153,28 +1170,46 @@ async function loadCheatTemplate(){
   } catch (e) { /* none saved yet */ }
   return defaultCheatSheet();
 }
-async function saveCheatTemplate(){
-  try { await storage.set(CHEAT_TEMPLATE_KEY, JSON.stringify(cheatSheetData), true); }
-  catch (e) { console.error('Could not save template', e); }
+let cheatTemplateSaveChain = Promise.resolve();
+function saveCheatTemplate(){
+  cheatTemplateSaveChain = cheatTemplateSaveChain.then(async () => {
+    try { await storage.set(CHEAT_TEMPLATE_KEY, JSON.stringify(cheatSheetData), true); }
+    catch (e) { console.error('Could not save template', e); }
+  });
+  return cheatTemplateSaveChain;
 }
 
 async function loadVendorCheatSheet(vendorName){
   const key = cheatSheetVendorKey(vendorName);
   try {
     const res = await storage.get(key, true);
-    if (res && res.value) return JSON.parse(res.value);
+    if (res && res.value) {
+      const parsed = JSON.parse(res.value);
+      // Backward compatible: older saves were just the fields array with no missingInfo.
+      if (Array.isArray(parsed)) return { fields: parsed, missingInfo: '' };
+      return { fields: parsed.fields || [], missingInfo: parsed.missingInfo || '' };
+    }
   } catch (e) { /* none saved yet for this vendor */ }
   // First time opening this vendor's sheet: start from the current base template.
   const fromTemplate = await loadCheatTemplate();
-  return fromTemplate.map(f => ({ ...f }));
+  return { fields: fromTemplate.map(f => ({ ...f })), missingInfo: '' };
 }
-async function saveVendorCheatSheet(vendorName){
+
+// Serialized (same race-condition fix used elsewhere) — typing in several fields quickly
+// no longer risks one save overwriting another's more complete data.
+let cheatSaveChain = Promise.resolve();
+function saveVendorCheatSheet(vendorName){
   const key = cheatSheetVendorKey(vendorName);
-  try { await storage.set(key, JSON.stringify(cheatSheetData), true); }
-  catch (e) { console.error('Could not save vendor cheat sheet', e); }
+  const payload = JSON.stringify({ fields: cheatSheetData, missingInfo: cheatSheetMissingInfo });
+  cheatSaveChain = cheatSaveChain.then(async () => {
+    try { await storage.set(key, payload, true); }
+    catch (e) { console.error('Could not save vendor cheat sheet', e); }
+  });
+  return cheatSaveChain;
 }
 
 let cheatSheetData = null;
+let cheatSheetMissingInfo = '';
 let cheatSheetMode = 'template'; // 'template' or 'vendor'
 let cheatSheetVendorName = null;
 
@@ -1229,21 +1264,38 @@ function renderCheatSheet(){
 async function openCheatSheet(mode, vendorName){
   cheatSheetMode = mode;
   cheatSheetVendorName = vendorName || null;
+  const missingBox = document.getElementById('missingInfoSection');
+  const missingTextarea = document.getElementById('missingInfoTextarea');
 
   if (mode === 'vendor'){
-    cheatSheetData = await loadVendorCheatSheet(vendorName);
+    const loaded = await loadVendorCheatSheet(vendorName);
+    cheatSheetData = loaded.fields;
+    cheatSheetMissingInfo = loaded.missingInfo;
     document.getElementById('cheatModalTitle').textContent = `Cheat Sheet — ${vendorName}`;
     document.getElementById('cheatModalSub').textContent = 'Specific to this vendor — starts from the base template, then customize as needed';
     document.getElementById('cheatModalNote').textContent = 'Changes here only affect this vendor. Click "Copy" next to any field to paste it into this GC\'s form.';
+    missingBox.style.display = 'block';
+    missingTextarea.value = cheatSheetMissingInfo;
   } else {
     cheatSheetData = await loadCheatTemplate();
+    cheatSheetMissingInfo = '';
     document.getElementById('cheatModalTitle').textContent = 'Base Cheat Sheet Template';
     document.getElementById('cheatModalSub').textContent = 'Used to prefill a new cheat sheet the first time you open one for a vendor';
     document.getElementById('cheatModalNote').textContent = 'Editing this template does NOT change cheat sheets you\'ve already customized for existing vendors — only new ones.';
+    missingBox.style.display = 'none';
   }
   renderCheatSheet();
   document.getElementById('cheatOverlay').classList.add('open');
 }
+
+let missingInfoSaveTimer = null;
+document.getElementById('missingInfoTextarea').addEventListener('input', (e) => {
+  cheatSheetMissingInfo = e.target.value;
+  clearTimeout(missingInfoSaveTimer);
+  missingInfoSaveTimer = setTimeout(() => {
+    if (cheatSheetMode === 'vendor') saveVendorCheatSheet(cheatSheetVendorName);
+  }, 400);
+});
 
 document.getElementById('addCheatFieldBtn').addEventListener('click', () => {
   const input = document.getElementById('newCheatFieldInput');
@@ -1285,11 +1337,22 @@ document.getElementById('openCheatFromDetail').addEventListener('click', (e) => 
 document.getElementById('cheatSheetBtn').addEventListener('click', () => {
   openCheatSheet('template', null);
 });
+function flushMissingInfoSave(){
+  if (missingInfoSaveTimer){
+    clearTimeout(missingInfoSaveTimer);
+    missingInfoSaveTimer = null;
+    if (cheatSheetMode === 'vendor') saveVendorCheatSheet(cheatSheetVendorName);
+  }
+}
 document.getElementById('closeCheatBtn').addEventListener('click', () => {
+  flushMissingInfoSave();
   document.getElementById('cheatOverlay').classList.remove('open');
 });
 document.getElementById('cheatOverlay').addEventListener('click', (e) => {
-  if (e.target.id === 'cheatOverlay') document.getElementById('cheatOverlay').classList.remove('open');
+  if (e.target.id === 'cheatOverlay'){
+    flushMissingInfoSave();
+    document.getElementById('cheatOverlay').classList.remove('open');
+  }
 });
 
 /* ---------- Bidding platform access (links + usernames only, never passwords) ---------- */
@@ -2616,7 +2679,13 @@ async function searchGmailForCurrentVendor(){
   box.innerHTML = '<div class="cheat-note">Loading emails…</div>';
 
   try {
-    const fullQuery = `${term} -to:vlad@wbdfl.com -to:natalia@wbdfl.com -from:natalia@wbdfl.com -from:vlad@wbdfl.com`;
+    // Multi-word terms get quoted so Gmail matches the exact phrase (e.g. "Miller Construction")
+    // instead of any email containing "Miller" and "Construction" separately, which pulls in
+    // unrelated emails (a different "Miller" who happens to also mention "construction").
+    const searchTerm = term.includes(' ') && !term.startsWith('"') ? `"${term}"` : term;
+    // No longer excludes emails to/from Natalia or Vladimir — those exclusions were hiding
+    // legitimate emails (e.g. Maria forwarding a vendor's application link to Natalia).
+    const fullQuery = searchTerm;
     const listRes = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(fullQuery)}&maxResults=8`,
       { headers: { Authorization: `Bearer ${gmailAccessToken}` } }
