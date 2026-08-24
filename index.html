@@ -1417,6 +1417,22 @@ function savePlatformAccess(){
   return platformSaveChain;
 }
 
+let platformSaveTimer = null;
+function queuePlatformAccessSave(){
+  clearTimeout(platformSaveTimer);
+  platformSaveTimer = setTimeout(() => {
+    platformSaveTimer = null;
+    savePlatformAccess();
+  }, 400);
+}
+function flushPlatformAccessSave(){
+  if (platformSaveTimer){
+    clearTimeout(platformSaveTimer);
+    platformSaveTimer = null;
+    savePlatformAccess();
+  }
+}
+
 function renderPlatformAccess(){
   const box = document.getElementById('platformFieldsBox');
   box.innerHTML = '';
@@ -1465,15 +1481,13 @@ function renderPlatformAccess(){
       }
     });
     wrap.querySelectorAll('input').forEach(input => {
-      let saveT = null;
       input.addEventListener('input', () => {
         p[input.dataset.field] = input.value;
         if (input.dataset.field === 'loginUrl'){
           const openLink = wrap.querySelector('a.cheat-copy-btn');
           openLink.href = input.value || '#';
         }
-        clearTimeout(saveT);
-        saveT = setTimeout(savePlatformAccess, 400);
+        queuePlatformAccessSave();
       });
     });
     wrap.querySelectorAll('.cheat-row').forEach(row => {
@@ -1502,10 +1516,14 @@ document.getElementById('platformAccessBtn').addEventListener('click', async () 
   document.getElementById('platformOverlay').classList.add('open');
 });
 document.getElementById('closePlatformBtn').addEventListener('click', () => {
+  flushPlatformAccessSave();
   document.getElementById('platformOverlay').classList.remove('open');
 });
 document.getElementById('platformOverlay').addEventListener('click', (e) => {
-  if (e.target.id === 'platformOverlay') document.getElementById('platformOverlay').classList.remove('open');
+  if (e.target.id === 'platformOverlay'){
+    flushPlatformAccessSave();
+    document.getElementById('platformOverlay').classList.remove('open');
+  }
 });
 
 /* ---------- Company standard documents (W-9, License, COI) — shared, upload once ---------- */
@@ -3482,6 +3500,26 @@ loadSyncedBy();
 loadData();
 setInterval(loadData, REFRESH_MS);
 setTimeout(initGmailAuth, 800); // small delay so the Google Identity Services script has time to load
+
+// ---------- Global safety net against lost edits ----------
+// Every debounced save in this app waits ~400ms before actually sending, so it doesn't
+// spam the backend on every keystroke. That's fine if the person clicks a visible close
+// button first (those already flush immediately) — but if they just switch tabs, close
+// the laptop, or close the browser entirely without clicking "close" first, whatever was
+// mid-debounce was silently lost. This flushes ALL pending saves the moment the tab is
+// hidden or the page starts to unload, regardless of how it happens, so nothing typed is
+// ever waiting on a timer that might not get to fire.
+function flushAllPendingSaves(){
+  try { flushSaveNow(); } catch (e) {}
+  try { flushCheatFieldsSave(); } catch (e) {}
+  try { flushMissingInfoSave(); } catch (e) {}
+  try { flushPlatformAccessSave(); } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushAllPendingSaves();
+});
+window.addEventListener('pagehide', flushAllPendingSaves);
+window.addEventListener('beforeunload', flushAllPendingSaves);
 </script>
 </body>
 </html>
