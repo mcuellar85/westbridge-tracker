@@ -836,13 +836,15 @@ const REMOTE_STORAGE_URL = "https://script.google.com/macros/s/AKfycbyoSUbfUn1c_
 const storage = {
   async get(key, _shared){
     if (!REMOTE_STORAGE_URL || REMOTE_STORAGE_URL.startsWith('PASTE_')) return null;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // never hang forever
     try {
       // cache-buster + explicit no-store: without this, the browser can silently serve a
       // stale cached response for this exact URL+key instead of what's actually saved —
       // which looks exactly like "my data disappeared" after a refresh, even though it's
       // still there on the backend the whole time.
       const url = REMOTE_STORAGE_URL + '?key=' + encodeURIComponent(key) + '&_ts=' + Date.now();
-      const res = await fetch(url, { cache: 'no-store' });
+      const res = await fetch(url, { cache: 'no-store', signal: controller.signal });
       if (!res.ok) return null;
       const data = await res.json();
       if (data && data.found) return { key, value: data.value };
@@ -850,15 +852,20 @@ const storage = {
     } catch (e) {
       console.warn('storage.get failed for', key, e);
       return null;
+    } finally {
+      clearTimeout(timeoutId);
     }
   },
   async set(key, value, _shared){
     if (!REMOTE_STORAGE_URL || REMOTE_STORAGE_URL.startsWith('PASTE_')) return null;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     try {
       // text/plain avoids a CORS preflight that Apps Script Web Apps can't answer.
       await fetch(REMOTE_STORAGE_URL, {
         method: 'POST',
         cache: 'no-store',
+        signal: controller.signal,
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ key, value })
       });
@@ -866,6 +873,8 @@ const storage = {
     } catch (e) {
       console.warn('storage.set failed for', key, e);
       return null;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 };
