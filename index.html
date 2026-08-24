@@ -2132,7 +2132,14 @@ function ensureDriveToken(){
         reject(new Error('Google Drive permission was not granted.'));
       }
     };
-    driveTokenClient.requestAccessToken();
+    // Small delay: this almost always fires right after the browser's native file-picker
+    // dialog closes (the person just chose a file), and Chrome blocks window.open() if it
+    // thinks a file chooser is still "active" at that exact moment. Waiting a beat lets
+    // the browser fully finish closing that dialog before we try to open the Google
+    // sign-in popup, so it doesn't get silently blocked.
+    setTimeout(() => {
+      driveTokenClient.requestAccessToken();
+    }, 300);
   });
 }
 
