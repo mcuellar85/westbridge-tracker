@@ -837,7 +837,12 @@ const storage = {
   async get(key, _shared){
     if (!REMOTE_STORAGE_URL || REMOTE_STORAGE_URL.startsWith('PASTE_')) return null;
     try {
-      const res = await fetch(REMOTE_STORAGE_URL + '?key=' + encodeURIComponent(key));
+      // cache-buster + explicit no-store: without this, the browser can silently serve a
+      // stale cached response for this exact URL+key instead of what's actually saved —
+      // which looks exactly like "my data disappeared" after a refresh, even though it's
+      // still there on the backend the whole time.
+      const url = REMOTE_STORAGE_URL + '?key=' + encodeURIComponent(key) + '&_ts=' + Date.now();
+      const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) return null;
       const data = await res.json();
       if (data && data.found) return { key, value: data.value };
@@ -853,6 +858,7 @@ const storage = {
       // text/plain avoids a CORS preflight that Apps Script Web Apps can't answer.
       await fetch(REMOTE_STORAGE_URL, {
         method: 'POST',
+        cache: 'no-store',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ key, value })
       });
@@ -3184,7 +3190,7 @@ async function getFileBytes(fileUrlOrDataUrl){
 
   const idMatch = fileUrlOrDataUrl.match(/[?&]id=([^&]+)/);
   if (!idMatch) throw new Error('Could not determine file ID from link.');
-  const res = await fetch(`${REMOTE_STORAGE_URL}?fileId=${encodeURIComponent(idMatch[1])}`);
+  const res = await fetch(`${REMOTE_STORAGE_URL}?fileId=${encodeURIComponent(idMatch[1])}&_ts=${Date.now()}`, { cache: 'no-store' });
   const data = await res.json();
   if (!data.found) throw new Error(data.error || 'File not found in Drive.');
   const binary = atob(data.base64Data);
@@ -3518,8 +3524,44 @@ function flushAllPendingSaves(){
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') flushAllPendingSaves();
 });
-window.addEventListener('pagehide', flushAllPendingSaves);
-window.addEventListener('beforeunload', flushAllPendingSaves);
+
+// The flushes above use fetch() under the hood, which the browser is allowed to cut off
+// mid-request once the page actually starts closing/reloading (fetch makes no guarantee
+// of completion during unload). navigator.sendBeacon() exists specifically to survive
+// this — the browser queues the request and sends it even after the page is gone. So for
+// the moment of actual reload/close (pagehide/beforeunload), we send the CURRENT state of
+// everything directly via beacon, bypassing the normal debounce/fetch path entirely.
+function beaconSave(key, value){
+  if (!REMOTE_STORAGE_URL || REMOTE_STORAGE_URL.startsWith('PASTE_') || !key) return;
+  try {
+    const payload = JSON.stringify({ key, value });
+    navigator.sendBeacon(REMOTE_STORAGE_URL, new Blob([payload], { type: 'text/plain;charset=UTF-8' }));
+  } catch (e) { /* best effort — nothing more we can do at this point */ }
+}
+function emergencyBeaconFlushOnUnload(){
+  try {
+    if (currentVendor && currentDetail){
+      beaconSave(slugify(currentVendor.name), JSON.stringify(currentDetail));
+    }
+  } catch (e) {}
+  try {
+    if (cheatSheetData){
+      if (cheatSheetMode === 'vendor' && cheatSheetVendorName){
+        beaconSave(cheatSheetVendorKey(cheatSheetVendorName), JSON.stringify({ fields: cheatSheetData, missingInfo: cheatSheetMissingInfo }));
+      } else if (cheatSheetMode === 'template'){
+        beaconSave(CHEAT_TEMPLATE_KEY, JSON.stringify(cheatSheetData));
+      }
+    }
+  } catch (e) {}
+  try {
+    if (platformData) beaconSave(PLATFORM_ACCESS_KEY, JSON.stringify(platformData));
+  } catch (e) {}
+  try {
+    if (companyDocsData) beaconSave(COMPANY_DOCS_KEY, JSON.stringify(companyDocsData));
+  } catch (e) {}
+}
+window.addEventListener('pagehide', emergencyBeaconFlushOnUnload);
+window.addEventListener('beforeunload', emergencyBeaconFlushOnUnload);
 </script>
 </body>
 </html>
