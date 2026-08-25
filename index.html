@@ -4051,6 +4051,13 @@ async function openRawEmailViewer(msgId, subject){
       const data = await res.json();
       html = extractGmailRawHtml(data.payload);
       if (html){
+        // Resolve any inline signature/logo images (cid: references) into real data URIs
+        // before caching, so they render correctly instead of showing broken image icons.
+        const cidParts = collectInlineCidParts(data.payload);
+        if (Object.keys(cidParts).length){
+          frame.srcdoc = `<body style="font-family:Arial,sans-serif; padding:16px; color:#555;">Loading images…</body>`;
+          html = await inlineCidImages(html, msgId, cidParts);
+        }
         window.gmailRawHtmlCache = window.gmailRawHtmlCache || {};
         window.gmailRawHtmlCache[msgId] = html;
       }
@@ -4098,6 +4105,62 @@ function extractGmailRawHtml(payload){
     return '';
   }
   return walk(payload);
+}
+
+// Signature logos and other inline images in an email are usually attachments referenced
+// by the HTML as src="cid:SOME_ID" — they don't resolve on their own since the actual image
+// bytes live as a separate MIME part, not embedded in the HTML. This walks the payload to
+// find every part with a Content-ID header, so each one can be fetched and swapped in below.
+function collectInlineCidParts(payload){
+  const found = {}; // cid (no angle brackets) -> { attachmentId, mimeType }
+  function walk(part){
+    if (!part) return;
+    const headers = part.headers || [];
+    const cidHeader = headers.find(h => (h.name || '').toLowerCase() === 'content-id');
+    if (cidHeader && part.body && part.body.attachmentId){
+      const cid = cidHeader.value.replace(/^<|>$/g, '');
+      found[cid] = { attachmentId: part.body.attachmentId, mimeType: part.mimeType || 'image/png' };
+    }
+    if (part.parts){
+      part.parts.forEach(walk);
+    }
+  }
+  walk(payload);
+  return found;
+}
+
+// Fetches each inline image's raw bytes and replaces every "cid:XXX" reference in the HTML
+// with a data: URI, so logos/signature images actually render inside the sandboxed iframe
+// (which can't reach out to Gmail's attachment endpoint on its own).
+async function inlineCidImages(html, msgId, cidParts){
+  const cids = Object.keys(cidParts);
+  if (!cids.length || !gmailAccessToken) return html;
+
+  const replacements = await Promise.all(cids.map(async (cid) => {
+    try {
+      const { attachmentId, mimeType } = cidParts[cid];
+      const res = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgId}/attachments/${attachmentId}`,
+        { headers: { Authorization: `Bearer ${gmailAccessToken}` } }
+      );
+      const data = await res.json();
+      if (!data.data) return null;
+      const base64Std = data.data.replace(/-/g, '+').replace(/_/g, '/');
+      return { cid, dataUri: `data:${mimeType};base64,${base64Std}` };
+    } catch (e){
+      return null;
+    }
+  }));
+
+  let result = html;
+  replacements.filter(Boolean).forEach(({ cid, dataUri }) => {
+    // Covers both cid:XXX and cid:'XXX' / cid:"XXX" style references, and is escaped since
+    // cids can contain characters like '.' or '@' that are meaningful in a regex.
+    const escapedCid = cid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`cid:${escapedCid}`, 'g');
+    result = result.replace(pattern, dataUri);
+  });
+  return result;
 }
 
 function extractGmailBodyText(payload){
@@ -4343,7 +4406,6 @@ async function searchGmailForCurrentVendor(){
       const isDomainMatch = !!(knownDomain && senderDomain === knownDomain.toLowerCase());
 
       const bodyText = extractGmailBodyText(msg.payload);
-      window.gmailRawHtmlCache[msg.id] = extractGmailRawHtml(msg.payload);
       const links = extractLinksFromText(bodyText || snippet);
       const attachments = extractGmailAttachments(msg.payload);
       if (links.length){ anyLinks = true; if (!bestLink) bestLink = links[0]; }
@@ -4361,7 +4423,7 @@ async function searchGmailForCurrentVendor(){
       const looksLikeEstimateRequest = estimateRequestPattern.test(subject + ' ' + snippet + ' ' + bodyText);
       if (!alreadyPending.has(msg.id) && !automatedSenderPattern.test(from) && (dueDateFound || looksLikeEstimateRequest || isDomainMatch)){
         if (!dueDateFound){
-          const dateImages = findDateImagesInHtml(window.gmailRawHtmlCache[msg.id]);
+          const dateImages = findDateImagesInHtml(extractGmailRawHtml(msg.payload));
           if (dateImages.length){
             ocrCandidates.push({ msgId: msg.id, projectName: extractProjectName(subject), imageUrl: dateImages[0].src });
           } else {
