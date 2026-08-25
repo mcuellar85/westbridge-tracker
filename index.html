@@ -96,7 +96,7 @@
     border-radius:6px; padding:5px 10px; font-size:11.5px; font-weight:700; cursor:pointer;
   }
 
-  .filters{ display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; align-items:center; }
+  .filters{ display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center; }
   .filter-btn{
     background:var(--panel); border:1px solid var(--line); color:var(--text-dim);
     padding:7px 14px; border-radius:999px; font-size:12.5px; cursor:pointer;
@@ -104,11 +104,15 @@
   }
   .filter-btn:hover{ border-color:var(--safety); color:var(--text); }
   .filter-btn.active{ background:var(--safety); border-color:var(--safety); color:#1a1a1a; }
+
+  .actions-row{ display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; align-items:center; padding-top:12px; border-top:1px solid var(--line); }
   .refresh-btn{
-    margin-left:auto; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    background:var(--panel-2); border:1px solid var(--line); color:var(--text);
     padding:7px 14px; border-radius:999px; font-size:12.5px; cursor:pointer; font-weight:600;
+    white-space:nowrap;
   }
   .refresh-btn:hover{ border-color:var(--safety); }
+  .refresh-btn.emphasis{ background:var(--safety-dim); border-color:var(--safety); }
 
   .grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap:16px; }
   .section-block{ margin-bottom: 32px; }
@@ -435,17 +439,32 @@
   .ci-remove{ background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:13px; padding:0 4px; }
   .ci-remove:hover{ color:var(--danger); }
   .add-item-row{ display:flex; gap:8px; margin-top:8px; }
-  .followup-row{ display:flex; align-items:center; gap:10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:8px; }
+  .followup-row{ display:grid; grid-template-columns: auto 1fr; gap:2px 10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:8px; align-items:start; }
   .followup-row.done{ opacity:0.5; }
   .followup-row.done .followup-name{ text-decoration:line-through; }
-  .followup-row input[type="checkbox"]{ width:18px; height:18px; flex-shrink:0; cursor:pointer; accent-color: var(--ok); }
-  .followup-name{ flex:1; min-width:120px; background:transparent; border:none; color:var(--text); font-size:14px; font-weight:600; padding:4px; }
+  .followup-row input[type="checkbox"]{ width:18px; height:18px; flex-shrink:0; cursor:pointer; accent-color: var(--ok); margin-top:3px; grid-row: 1 / span 2; }
+  .followup-main{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+  .followup-name{ flex:1; min-width:140px; background:transparent; border:none; color:var(--text); font-size:14px; font-weight:700; padding:4px; }
   .followup-name:focus{ outline:1px solid var(--safety); border-radius:4px; }
   .followup-action{ background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:6px; padding:5px 8px; font-size:12px; flex-shrink:0; }
-  .followup-notes{ flex:1.4; min-width:100px; background:transparent; border:none; border-bottom:1px dashed var(--line); color:var(--text-dim); font-size:12px; padding:4px; }
-  .followup-notes:focus{ outline:none; border-bottom-color:var(--safety); }
-  .followup-remove{ background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; padding:2px 6px; flex-shrink:0; }
+  .followup-remove{ background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; padding:2px 6px; flex-shrink:0; margin-left:auto; }
   .followup-remove:hover{ color:var(--danger); }
+  .followup-contact-row{ display:flex; flex-wrap:wrap; gap:14px; margin-top:2px; }
+  .followup-field{ display:flex; align-items:center; gap:6px; }
+  .followup-field-label{ font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-dim); font-weight:700; flex-shrink:0; }
+  .followup-phone, .followup-email{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:4px 8px;
+    color:var(--text); font-size:12.5px; min-width:130px; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  .followup-phone:focus, .followup-email:focus{ outline:none; border-color:var(--safety); }
+  .followup-copy-btn{
+    background:none; border:1px solid var(--line); color:var(--text-dim); border-radius:5px;
+    padding:2px 7px; font-size:11px; cursor:pointer; flex-shrink:0;
+  }
+  .followup-copy-btn:hover{ border-color:var(--safety); color:var(--text); }
+  .followup-copy-btn.copied{ border-color:var(--ok); color:var(--ok); }
+  .followup-notes{ width:100%; margin-top:4px; background:transparent; border:none; border-bottom:1px dashed var(--line); color:var(--text-dim); font-size:12px; padding:4px; }
+  .followup-notes:focus{ outline:none; border-bottom-color:var(--safety); }
   .add-item-row input{ flex:1; background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:7px; padding:8px 10px; font-size:12.5px; }
   .add-item-row button{ background:var(--panel-2); border:1px dashed var(--line); color:var(--text-dim); border-radius:7px; padding:8px 14px; font-size:12px; cursor:pointer; }
 
@@ -488,11 +507,13 @@
     <button class="filter-btn" data-filter="pending">🟡 In progress / warm</button>
     <button class="filter-btn" data-filter="blocked">🔴 Blocked / not started</button>
     <button class="filter-btn" data-filter="submitted">Submitted</button>
-    <button class="refresh-btn" id="platformAccessBtn" style="margin-left:auto;">🔑 Platform Access</button>
+  </div>
+  <div class="actions-row">
     <button class="refresh-btn" id="companyDocsBtn">📄 Company Documents</button>
-    <button class="refresh-btn" id="cheatSheetBtn">📋 Base Cheat Sheet Template</button>
+    <button class="refresh-btn" id="platformAccessBtn">🔑 Platform Access</button>
     <button class="refresh-btn" id="followUpBtn">📞 Follow-Up List</button>
-    <button class="refresh-btn" id="refreshBtn">↻ Refresh now</button>
+    <button class="refresh-btn" id="cheatSheetBtn">📋 Base Cheat Sheet Template</button>
+    <button class="refresh-btn emphasis" id="refreshBtn">↻ Refresh now</button>
   </div>
 
   <div class="grid" id="grid"><div class="msg">Loading data from Google Sheet…</div></div>
@@ -1635,313 +1656,417 @@ const DEFAULT_FOLLOWUP_CONTACTS = [
   {
     "name": "Avi Custom Cabinets",
     "action": "Other",
-    "notes": "+1 954-778-9292 — Abreviada como ACC — [orig: Contacto General]",
+    "phone": "+1 954-778-9292",
+    "email": "",
+    "notes": "Abbreviated as ACC — [orig: General Contact]",
     "done": false
   },
   {
     "name": "Myxcell",
     "action": "Other",
-    "notes": "Para preguntas de configuración — [orig: Soporte Técnico]",
+    "phone": "",
+    "email": "",
+    "notes": "For setup/configuration questions — [orig: Technical Support]",
     "done": false
   },
   {
     "name": "Jonathan Hallet (Nino Moreno)",
     "action": "Call",
-    "notes": "954-340-1409 — Información de la compañía enviada — [orig: Llamar/Email]",
+    "phone": "954-340-1409",
+    "email": "",
+    "notes": "Company information sent — [orig: Call/Email]",
     "done": false
   },
   {
     "name": "María (LRG Construction)",
     "action": "Send Text",
-    "notes": "+1 754-971-0425 — Responderá con email — [orig: Enviar SMS + Email]",
+    "phone": "+1 754-971-0425",
+    "email": "",
+    "notes": "Will reply by email — [orig: Send Text + Email]",
     "done": false
   },
   {
     "name": "Adam (A.N.O Quality Construction)",
     "action": "Send Text",
-    "notes": "+1 786-901-3178 — [orig: Enviar SMS]",
+    "phone": "+1 786-901-3178",
+    "email": "",
+    "notes": "[orig: Send Text]",
     "done": false
   },
   {
     "name": "Will (Ground Up Construction)",
     "action": "Send Text",
-    "notes": "+1 561-539-6650 — Necesita 2 demoliciones urgentes — [orig: Enviar SMS]",
+    "phone": "+1 561-539-6650",
+    "email": "",
+    "notes": "Needs 2 urgent demolitions — [orig: Send Text]",
     "done": false
   },
   {
     "name": "David (Love by Design)",
     "action": "Call",
-    "notes": "+1 561-294-5668 — Cocina, tiene trabajo disponible — [orig: Llamar]",
+    "phone": "+1 561-294-5668",
+    "email": "",
+    "notes": "Kitchen project, has work available — [orig: Call]",
     "done": false
   },
   {
     "name": "Jerry (Palm Beach Kitchen and Design Company)",
     "action": "Send Text",
-    "notes": "+1 973-876-4104 — Número personal — [orig: Enviar SMS]",
+    "phone": "+1 973-876-4104",
+    "email": "",
+    "notes": "Personal number — [orig: Send Text]",
     "done": false
   },
   {
     "name": "A Topping Plumbing",
     "action": "Send Text",
-    "notes": "+1 561-298-9976 — Compañía de plomería — [orig: Enviar SMS]",
+    "phone": "+1 561-298-9976",
+    "email": "",
+    "notes": "Plumbing company — [orig: Send Text]",
     "done": false
   },
   {
     "name": "Lori (My Own Plumbing)",
     "action": "Call",
-    "notes": "Proyectos próximos — [orig: Llamar después navidad]",
+    "phone": "",
+    "email": "",
+    "notes": "Upcoming projects — [orig: Call after Christmas]",
     "done": false
   },
   {
     "name": "Boris Fernandez (Fernandez Plumbing)",
     "action": "Call",
-    "notes": "+1 561-800-7381 — Proyectos próximos — [orig: Llamar/Email]",
+    "phone": "+1 561-800-7381",
+    "email": "",
+    "notes": "Upcoming projects — [orig: Call/Email]",
     "done": false
   },
   {
     "name": "Jerry (Plumbing)",
     "action": "Send Text",
-    "notes": "+1 561-225-3476 — Plomero — [orig: Enviar SMS]",
+    "phone": "+1 561-225-3476",
+    "email": "",
+    "notes": "Plomero — [orig: Send Text]",
     "done": false
   },
   {
     "name": "Michael (MJS Plumbing)",
     "action": "Call",
-    "notes": "+1 954-907-2152 — Core drilling y servicios relacionados — [orig: Llamar]",
+    "phone": "+1 954-907-2152",
+    "email": "",
+    "notes": "Core drilling and related services — [orig: Call]",
     "done": false
   },
   {
     "name": "John (Chandler Construction)",
     "action": "Call",
-    "notes": "+1 561-791-6934 ext 2 — Dial ext 2, muchos proyectos disponibles — [orig: Llamar]",
+    "phone": "+1 561-791-6934 ext 2",
+    "email": "",
+    "notes": "Dial ext 2, many projects available — [orig: Call]",
     "done": false
   },
   {
     "name": "Michael (Buffington Construction)",
     "action": "Send Text",
-    "notes": "+1 561-573-3850 — [orig: Enviar SMS + Llamar próxima semana]",
+    "phone": "+1 561-573-3850",
+    "email": "",
+    "notes": "[orig: Send Text + Call next week]",
     "done": false
   },
   {
     "name": "Atlantic View Builders",
     "action": "Send Text",
-    "notes": "+1 561-560-7556 — En Atlantis — [orig: Enviar SMS]",
+    "phone": "+1 561-560-7556",
+    "email": "",
+    "notes": "In Atlantis — [orig: Send Text]",
     "done": false
   },
   {
     "name": "Dylan (DBS Roofing)",
     "action": "Call",
-    "notes": "+1 954-947-7439 — Techos/Roofing — [orig: Llamar]",
+    "phone": "+1 954-947-7439",
+    "email": "",
+    "notes": "Roofing — [orig: Call]",
     "done": false
   },
   {
     "name": "Vincent (Stonegate Contracting Group)",
     "action": "Call",
-    "notes": "+1 954-906-5586 — Espera llamada, proyectos disponibles — [orig: Llamar ASAP]",
+    "phone": "+1 954-906-5586",
+    "email": "",
+    "notes": "Expecting a call, projects available — [orig: Call ASAP]",
     "done": false
   },
   {
     "name": "Oscar (Boynton Beach Concrete Specialists)",
     "action": "Send Text",
-    "notes": "+1 954-444-0718 — Proyectos DEMO frecuentes — [orig: Enviar SMS]",
+    "phone": "+1 954-444-0718",
+    "email": "",
+    "notes": "Frequent DEMO projects — [orig: Send Text]",
     "done": false
   },
   {
     "name": "Peter (QSM General)",
     "action": "Send Text",
-    "notes": "+1 561-932-6348 — peter@qms209.com — Enviar licencias e insurances — [orig: Enviar SMS/Email]",
+    "phone": "+1 561-932-6348",
+    "email": "peter@qms209.com",
+    "notes": "Send licenses and insurance — [orig: Send Text/Email]",
     "done": false
   },
   {
     "name": "Kate (Highland Contractors Inc)",
     "action": "Send Email",
-    "notes": "+1 561-784-7650 — admin@highlandcontractorsinc.com — [orig: Enviar Licencias/Insurances]",
+    "phone": "+1 561-784-7650",
+    "email": "admin@highlandcontractorsinc.com",
+    "notes": "[orig: Send Licenses/Insurance]",
     "done": false
   },
   {
     "name": "Arpad",
     "action": "Send Text",
-    "notes": "+1 754-368-3444 — [orig: Enviar SMS]",
+    "phone": "+1 754-368-3444",
+    "email": "",
+    "notes": "[orig: Send Text]",
     "done": false
   },
   {
     "name": "Will (Ground Up Construction)",
     "action": "Send Email",
-    "notes": "+1 561-538-6650 — Demolición y construcción — [orig: Email enviado]",
+    "phone": "+1 561-538-6650",
+    "email": "",
+    "notes": "Demolition and construction — [orig: Email sent]",
     "done": true
   },
   {
     "name": "Paving Maven",
     "action": "Send Text",
-    "notes": "+1 561-271-7665 — Equipo de estimating — [orig: Enviar SMS]",
+    "phone": "+1 561-271-7665",
+    "email": "",
+    "notes": "Estimating team — [orig: Send Text]",
     "done": false
   },
   {
     "name": "Oscar (Palm Beach Outdoor Contracting)",
     "action": "Send Email",
-    "notes": "+1 561-515-9409 — [orig: Email enviado]",
+    "phone": "+1 561-515-9409",
+    "email": "",
+    "notes": "[orig: Email sent]",
     "done": true
   },
   {
     "name": "Dominque (Ekert Concrete Cutting)",
     "action": "Send Text",
-    "notes": "Dueño, proyectos en Miami/Tampa — [orig: Enviar SMS + Llamar lunes]",
+    "phone": "",
+    "email": "",
+    "notes": "Owner, projects in Miami/Tampa — [orig: Send Text + Call Monday]",
     "done": false
   },
   {
     "name": "Andrea (Banyan Construction Group)",
     "action": "Send Email",
-    "notes": "Preguntó sobre permisos — [orig: Email enviado]",
+    "phone": "",
+    "email": "",
+    "notes": "Asked about permits — [orig: Email sent]",
     "done": true
   },
   {
     "name": "Jeremy (Petra Builders)",
     "action": "Call",
-    "notes": "+1 561-933-1818 — Quiere revisar seguros/licencias — [orig: Llamar]",
+    "phone": "+1 561-933-1818",
+    "email": "",
+    "notes": "Wants to review insurance/licenses — [orig: Call]",
     "done": false
   },
   {
     "name": "Dann",
     "action": "Send Text",
-    "notes": "+1 561-633-9891 — Callaghan1@ymail.com — Proyectos próximos — [orig: Enviar Email + SMS]",
+    "phone": "+1 561-633-9891",
+    "email": "Callaghan1@ymail.com",
+    "notes": "Upcoming projects — [orig: Send Email + Text]",
     "done": false
   },
   {
     "name": "Mark Harrison (The Harrison Company)",
     "action": "Call",
-    "notes": "+1 407-252-5855 — markharrison@theharrisoncompany.net — Proyectos próximos — [orig: Llamar]",
+    "phone": "+1 407-252-5855",
+    "email": "markharrison@theharrisoncompany.net",
+    "notes": "Upcoming projects — [orig: Call]",
     "done": false
   },
   {
     "name": "JUDA Construction",
     "action": "Call",
-    "notes": "+1 561-856-9026 — info@judacontractor.com — Servicios DEMO — [orig: Llamar]",
+    "phone": "+1 561-856-9026",
+    "email": "info@judacontractor.com",
+    "notes": "DEMO services — [orig: Call]",
     "done": false
   },
   {
     "name": "Christian Garcia",
     "action": "Send Text",
-    "notes": "+1 561-853-6431 — Pregunta sobre precio por sq ft demo — [orig: Enviar SMS]",
+    "phone": "+1 561-853-6431",
+    "email": "",
+    "notes": "Asking about price per sq ft for demo — [orig: Send Text]",
     "done": false
   },
   {
     "name": "Frank (Design Builds Professionals 1)",
     "action": "Send Text",
-    "notes": "+561-374-0060 — [orig: Enviar SMS]",
+    "phone": "+561-374-0060",
+    "email": "",
+    "notes": "[orig: Send Text]",
     "done": false
   },
   {
     "name": "Claudio (HAEZ Construction)",
     "action": "Send Text",
-    "notes": "+1 561-777-4585 — claudio@haezconstruction.com — [orig: Email/SMS]",
+    "phone": "+1 561-777-4585",
+    "email": "claudio@haezconstruction.com",
+    "notes": "[orig: Email/Text]",
     "done": false
   },
   {
     "name": "Christopher Kagan",
     "action": "Call",
-    "notes": "+1 239-707-7777 — christopher.kagan@gmail.com — Ganó proyecto, contacto urgente — [orig: Email/Llamar ASAP]",
+    "phone": "+1 239-707-7777",
+    "email": "christopher.kagan@gmail.com",
+    "notes": "Ganó proyecto, contacto urgente — [orig: Email/Call ASAP]",
     "done": false
   },
   {
     "name": "Noel (MN Shell)",
     "action": "Call",
-    "notes": "+1 786-479-9948 — noel@mnshell.com — Construcción + demolición — [orig: Llamar]",
+    "phone": "+1 786-479-9948",
+    "email": "noel@mnshell.com",
+    "notes": "Construction + demolition — [orig: Call]",
     "done": false
   },
   {
     "name": "John (Chandler Construction Company)",
     "action": "Call",
-    "notes": "+1 561-791-6934 ext 101 — Demolición y construcción — [orig: Llamar próxima semana]",
+    "phone": "+1 561-791-6934 ext 101",
+    "email": "",
+    "notes": "Demolition and construction — [orig: Call next week]",
     "done": false
   },
   {
     "name": "Amine (Kore Construction)",
     "action": "Call",
-    "notes": "+1 561-560-6060 — Proyecto DEMO disponible — [orig: Llamar ahora]",
+    "phone": "+1 561-560-6060",
+    "email": "",
+    "notes": "DEMO project available — [orig: Call now]",
     "done": false
   },
   {
     "name": "Unknown",
     "action": "Call",
-    "notes": "+1 561-589-8575 — Dueña, proyectos próximos — [orig: Llamar ahora]",
+    "phone": "+1 561-589-8575",
+    "email": "",
+    "notes": "Owner (f), upcoming projects — [orig: Call now]",
     "done": false
   },
   {
     "name": "Admir (Atlantic Coast Construction)",
     "action": "Send Text",
-    "notes": "+1 904-607-2009 — Preguntó si solo demolición — [orig: Enviar SMS/Email]",
+    "phone": "+1 904-607-2009",
+    "email": "",
+    "notes": "Asked if we only do demolition — [orig: Send Text/Email]",
     "done": false
   },
   {
     "name": "Trent Mayer (Mayerworks Construction)",
     "action": "Send Text",
-    "notes": "+1 561-628-7994 — [orig: Enviar SMS + Email]",
+    "phone": "+1 561-628-7994",
+    "email": "",
+    "notes": "[orig: Send Text + Email]",
     "done": false
   },
   {
     "name": "J Fitzgerald (Unknown/Construcción)",
     "action": "Send Text",
-    "notes": "+1 954-444-6099 — Dueño, nos metería en su lista de subcontratistas — [orig: Enviar SMS]",
+    "phone": "+1 954-444-6099",
+    "email": "",
+    "notes": "Owner, would add us to their subcontractor list — [orig: Send Text]",
     "done": false
   },
   {
     "name": "Jake (Cavadium)",
     "action": "Send Text",
-    "notes": "+1 561-295-7575 — jake@cavadium.com — [orig: Enviar SMS]",
+    "phone": "+1 561-295-7575",
+    "email": "jake@cavadium.com",
+    "notes": "[orig: Send Text]",
     "done": false
   },
   {
     "name": "CJ",
     "action": "Send Text",
-    "notes": "+1 561-504-6988 — Necesita DEMO constantemente — [orig: Enviar SMS]",
+    "phone": "+1 561-504-6988",
+    "email": "",
+    "notes": "Needs DEMO constantly — [orig: Send Text]",
     "done": false
   },
   {
     "name": "Ben (Eagle General Contracting Group Corp)",
     "action": "Send Text",
-    "notes": "+1 954-549-4976 — Proyectos próximos — [orig: Enviar SMS]",
+    "phone": "+1 954-549-4976",
+    "email": "",
+    "notes": "Upcoming projects — [orig: Send Text]",
     "done": false
   },
   {
     "name": "Dino (Cmetric Construction)",
     "action": "Send Text",
-    "notes": "+1 561-749-9403 — Tiene trabajos en el momento — [orig: Enviar SMS]",
+    "phone": "+1 561-749-9403",
+    "email": "",
+    "notes": "Has work available right now — [orig: Send Text]",
     "done": false
   },
   {
     "name": "Thomas (Superior Construction Group)",
     "action": "Call",
-    "notes": "+1 239-362-1499 — Buscando subcontratistas DEMO — [orig: Llamar]",
+    "phone": "+1 239-362-1499",
+    "email": "",
+    "notes": "Looking for DEMO subcontractors — [orig: Call]",
     "done": false
   },
   {
     "name": "Godmade Precise Construction INC",
     "action": "Send Text",
-    "notes": "+1 561-723-3500 — Dueño ocupado en ese momento — [orig: Enviar SMS]",
+    "phone": "+1 561-723-3500",
+    "email": "",
+    "notes": "Owner was busy at the time — [orig: Send Text]",
     "done": false
   },
   {
     "name": "Matt (North Palm Builders)",
     "action": "Call",
-    "notes": "+1 561-714-2619 — Email ya enviado — [orig: Llamar hoy]",
+    "phone": "+1 561-714-2619",
+    "email": "",
+    "notes": "Email already sent — [orig: Call today]",
     "done": false
   },
   {
     "name": "Luke (LB Builders)",
     "action": "Send Text",
-    "notes": "+1 561-307-9551 — Proyectos para pujar — [orig: Enviar SMS]",
+    "phone": "+1 561-307-9551",
+    "email": "",
+    "notes": "Projects to bid on — [orig: Send Text]",
     "done": false
   },
   {
     "name": "Mike (Florida Atlantic Construction)",
     "action": "Call",
-    "notes": "+1 561-239-5917 — Proyecto para próxima semana — [orig: Llamar]",
+    "phone": "+1 561-239-5917",
+    "email": "",
+    "notes": "Project for next week — [orig: Call]",
     "done": false
   },
   {
     "name": "Irfan Syed (Irfanullah) (Moss Associates)",
     "action": "Call",
-    "notes": "+1 954-524-5678 — Proyecto DEMO grande — [orig: Llamar]",
+    "phone": "+1 954-524-5678",
+    "email": "",
+    "notes": "Large DEMO project — [orig: Call]",
     "done": false
   }
 ];
@@ -1972,9 +2097,39 @@ function flushFollowUpSave(){
   if (followUpSaveTimer){ clearTimeout(followUpSaveTimer); followUpSaveTimer = null; saveFollowUpList(); }
 }
 
+// Older entries stored phone/email mashed into the notes field (e.g. "+1 954-778-9292 —
+// Abreviada como ACC — [orig: Contacto General]"). This pulls a phone number and email
+// address out of that text the first time we render, so existing data upgrades itself
+// into the new dedicated phone/email columns without the person having to retype anything.
+function migrateFollowUpItem(item){
+  if (item.phone !== undefined && item.email !== undefined) return item; // already migrated
+  const notes = item.notes || '';
+  const phoneMatch = notes.match(/\+?1?[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?:\s*(?:ext|x)\.?\s*\d+)?/i);
+  const emailMatch = notes.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+  item.phone = phoneMatch ? phoneMatch[0].trim() : '';
+  item.email = emailMatch ? emailMatch[0].trim() : '';
+  let restNotes = notes;
+  if (phoneMatch) restNotes = restNotes.replace(phoneMatch[0], '');
+  if (emailMatch) restNotes = restNotes.replace(emailMatch[0], '');
+  restNotes = restNotes.replace(/^\s*—\s*|\s*—\s*$/g, '').replace(/—\s*—/g, '—').trim();
+  item.notes = restNotes;
+  return item;
+}
+
+function copyToClipboard(text, btn){
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    const original = btn.textContent;
+    btn.textContent = '✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = original; btn.classList.remove('copied'); }, 1200);
+  }).catch(() => {});
+}
+
 function renderFollowUpList(){
   const box = document.getElementById('followUpBox');
   box.innerHTML = '';
+  followUpData.forEach(migrateFollowUpItem);
   if (!followUpData.length){
     box.innerHTML = '<div class="cheat-note">No one on the list yet — add a name below.</div>';
     return;
@@ -1994,6 +2149,10 @@ function renderFollowUpList(){
       queueFollowUpSave();
       renderFollowUpList();
     });
+
+    // --- Main line: name, action, remove ---
+    const mainLine = document.createElement('div');
+    mainLine.className = 'followup-main';
 
     const nameInput = document.createElement('input');
     nameInput.className = 'followup-name';
@@ -2018,15 +2177,6 @@ function renderFollowUpList(){
       queueFollowUpSave();
     });
 
-    const notesInput = document.createElement('input');
-    notesInput.className = 'followup-notes';
-    notesInput.value = item.notes || '';
-    notesInput.placeholder = 'Notes (phone, project, etc.)';
-    notesInput.addEventListener('input', () => {
-      followUpData[idx].notes = notesInput.value;
-      queueFollowUpSave();
-    });
-
     const removeBtn = document.createElement('button');
     removeBtn.className = 'followup-remove';
     removeBtn.textContent = '✕';
@@ -2037,11 +2187,75 @@ function renderFollowUpList(){
       renderFollowUpList();
     });
 
+    mainLine.appendChild(nameInput);
+    mainLine.appendChild(actionSelect);
+    mainLine.appendChild(removeBtn);
+
+    // --- Second line: dedicated Phone and Email fields, each with its own Copy button ---
+    const contactRow = document.createElement('div');
+    contactRow.className = 'followup-contact-row';
+
+    const phoneField = document.createElement('div');
+    phoneField.className = 'followup-field';
+    const phoneLabel = document.createElement('span');
+    phoneLabel.className = 'followup-field-label';
+    phoneLabel.textContent = 'Phone';
+    const phoneInput = document.createElement('input');
+    phoneInput.className = 'followup-phone';
+    phoneInput.value = item.phone || '';
+    phoneInput.placeholder = '—';
+    phoneInput.addEventListener('input', () => {
+      followUpData[idx].phone = phoneInput.value;
+      queueFollowUpSave();
+    });
+    const phoneCopyBtn = document.createElement('button');
+    phoneCopyBtn.className = 'followup-copy-btn';
+    phoneCopyBtn.textContent = 'Copy';
+    phoneCopyBtn.addEventListener('click', () => copyToClipboard(phoneInput.value, phoneCopyBtn));
+    phoneField.appendChild(phoneLabel);
+    phoneField.appendChild(phoneInput);
+    phoneField.appendChild(phoneCopyBtn);
+
+    const emailField = document.createElement('div');
+    emailField.className = 'followup-field';
+    const emailLabel = document.createElement('span');
+    emailLabel.className = 'followup-field-label';
+    emailLabel.textContent = 'Email';
+    const emailInput = document.createElement('input');
+    emailInput.className = 'followup-email';
+    emailInput.value = item.email || '';
+    emailInput.placeholder = '—';
+    emailInput.addEventListener('input', () => {
+      followUpData[idx].email = emailInput.value;
+      queueFollowUpSave();
+    });
+    const emailCopyBtn = document.createElement('button');
+    emailCopyBtn.className = 'followup-copy-btn';
+    emailCopyBtn.textContent = 'Copy';
+    emailCopyBtn.addEventListener('click', () => copyToClipboard(emailInput.value, emailCopyBtn));
+    emailField.appendChild(emailLabel);
+    emailField.appendChild(emailInput);
+    emailField.appendChild(emailCopyBtn);
+
+    contactRow.appendChild(phoneField);
+    contactRow.appendChild(emailField);
+
+    // --- Third line: free-form notes ---
+    const notesInput = document.createElement('input');
+    notesInput.className = 'followup-notes';
+    notesInput.value = item.notes || '';
+    notesInput.placeholder = 'Notes (project, context, etc.)';
+    notesInput.addEventListener('input', () => {
+      followUpData[idx].notes = notesInput.value;
+      queueFollowUpSave();
+    });
+
     row.appendChild(checkbox);
-    row.appendChild(nameInput);
-    row.appendChild(actionSelect);
-    row.appendChild(notesInput);
-    row.appendChild(removeBtn);
+    const contentCol = document.createElement('div');
+    contentCol.appendChild(mainLine);
+    contentCol.appendChild(contactRow);
+    contentCol.appendChild(notesInput);
+    row.appendChild(contentCol);
     box.appendChild(row);
   });
 }
@@ -2055,7 +2269,7 @@ document.getElementById('addFollowUpBtn').addEventListener('click', () => {
   const input = document.getElementById('newFollowUpNameInput');
   const name = input.value.trim();
   if (!name) return;
-  followUpData.push({ name, action: 'Send Brochure', notes: '', done: false });
+  followUpData.push({ name, action: 'Send Brochure', phone: '', email: '', notes: '', done: false });
   input.value = '';
   saveFollowUpList();
   renderFollowUpList();
@@ -2769,7 +2983,8 @@ function renderEstimatesPending(){
         <input type="date" class="pi-date-input" value="${escapeHtml(p.dueDate || (p.due && /^\d{4}-\d{2}-\d{2}$/.test(p.due) ? p.due : ''))}" title="Due date">
       </div>
       <div class="file-current-actions">
-        <button class="file-view-link" data-idx="${idx}" style="border:none; cursor:pointer;">✓ Mark as sent</button>
+        ${p.sourceMsgId ? `<button class="file-view-link preview-pending-btn" data-idx="${idx}" style="border:none; cursor:pointer;">🖼️ Preview email</button>` : ''}
+        <button class="file-view-link mark-sent-btn" data-idx="${idx}" style="border:none; cursor:pointer;">✓ Mark as sent</button>
         <button class="file-remove-btn" data-idx="${idx}">Remove</button>
       </div>
     `;
@@ -2778,7 +2993,12 @@ function renderEstimatesPending(){
       p.due = e.target.value;
       queueSave();
     });
-    row.querySelector('.file-view-link').addEventListener('click', () => {
+    if (p.sourceMsgId){
+      row.querySelector('.preview-pending-btn').addEventListener('click', () => {
+        openRawEmailViewer(p.sourceMsgId, p.label);
+      });
+    }
+    row.querySelector('.mark-sent-btn').addEventListener('click', () => {
       currentDetail.estimatesPending.splice(idx, 1);
       renderEstimatesPending();
       queueSave();
@@ -2829,7 +3049,8 @@ function renderEstimatesReceived(){
       ${est.source ? `<div style="font-size:11px; color:var(--text-dim); margin-top:2px;">From: <b style="color:var(--text);">${escapeHtml(est.source)}</b></div>` : ''}
       <div class="file-current-actions" style="margin-top:8px; justify-content:flex-end;">
         ${hasRealLink ? `<button class="file-view-link view-received-btn" data-idx="${idx}" style="border:none; cursor:pointer;">${est.dataUrl.startsWith('data:') ? '📄 View file' : '🔗 Open link'}</button>` : ''}
-        ${est.originalEmailLink ? `<a href="${escapeHtml(est.originalEmailLink)}" target="_blank" class="file-view-link" style="text-decoration:none;">📧 View original email</a>` : ''}
+        ${est.sourceMsgId ? `<button class="file-view-link preview-received-btn" data-idx="${idx}" style="border:none; cursor:pointer;">🖼️ Preview email</button>` : ''}
+        ${est.originalEmailLink ? `<a href="${escapeHtml(est.originalEmailLink)}" target="_blank" class="file-view-link" style="text-decoration:none;">📧 Open in Gmail</a>` : ''}
         <button class="file-view-link respond-received-btn" data-idx="${idx}" style="border:none; cursor:pointer;">💬 Suggested Reply</button>
         <button class="file-remove-btn" data-idx="${idx}">Remove</button>
       </div>
@@ -2837,6 +3058,11 @@ function renderEstimatesReceived(){
     row.querySelector('.respond-received-btn').addEventListener('click', () => {
       openEstimateResponseDraft(est.source, est.name);
     });
+    if (est.sourceMsgId){
+      row.querySelector('.preview-received-btn').addEventListener('click', () => {
+        openRawEmailViewer(est.sourceMsgId, est.name);
+      });
+    }
     if (hasRealLink){
       row.querySelector('.view-received-btn').addEventListener('click', () => {
         if (est.dataUrl.startsWith('data:')) openFileSafely(est.dataUrl, est.name);
@@ -3145,14 +3371,31 @@ document.getElementById('refreshGmailBtn').addEventListener('click', () => {
   searchGmailForCurrentVendor();
 });
 
-function openRawEmailViewer(msgId, subject){
-  const html = (window.gmailRawHtmlCache && window.gmailRawHtmlCache[msgId]) || '';
+async function openRawEmailViewer(msgId, subject){
   document.getElementById('rawEmailSubjectLabel').textContent = subject || 'Original email';
   const frame = document.getElementById('rawEmailFrame');
+  let html = (window.gmailRawHtmlCache && window.gmailRawHtmlCache[msgId]) || '';
+
+  if (!html && gmailAccessToken){
+    frame.srcdoc = `<body style="font-family:Arial,sans-serif; padding:16px; color:#555;">Loading preview…</body>`;
+    document.getElementById('rawEmailOverlay').classList.add('open');
+    try {
+      const res = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgId}?format=full`, {
+        headers: { Authorization: `Bearer ${gmailAccessToken}` }
+      });
+      const data = await res.json();
+      html = extractGmailRawHtml(data.payload);
+      if (html){
+        window.gmailRawHtmlCache = window.gmailRawHtmlCache || {};
+        window.gmailRawHtmlCache[msgId] = html;
+      }
+    } catch (e) { /* falls through to the "not available" message below */ }
+  }
+
   if (html){
     frame.srcdoc = `<base target="_blank"><body style="font-family:Arial,sans-serif; padding:16px; color:#111;">${html}</body>`;
   } else {
-    frame.srcdoc = `<body style="font-family:Arial,sans-serif; padding:16px; color:#555;">No formatted (HTML) version available for this email — it may be plain text only. Use "Open this exact email in Gmail" instead.</body>`;
+    frame.srcdoc = `<body style="font-family:Arial,sans-serif; padding:16px; color:#555;">${gmailAccessToken ? 'No formatted (HTML) version available for this email — it may be plain text only.' : 'Connect Gmail first (top of the correspondence log) to preview this email.'} Use "Open this exact email in Gmail" instead.</body>`;
   }
   document.getElementById('rawEmailOverlay').classList.add('open');
 }
@@ -3346,16 +3589,18 @@ async function searchGmailForCurrentVendor(){
     // unrelated emails (a different "Miller" who happens to also mention "construction").
     const searchTerm = term.includes(' ') && !term.startsWith('"') ? `"${term}"` : term;
     const knownDomain = (currentDetail && currentDetail.companyDomain) ? currentDetail.companyDomain.trim() : '';
-    // Restricting the name match to the SUBJECT line (not "anywhere in the email") is what
-    // keeps internal digest emails out — a "EOD" recap that lists several companies in its
-    // body would otherwise match every one of those companies' searches, even though it's
-    // not really correspondence about any single one of them. Real correspondence about a
-    // vendor almost always names them in the subject line.
-    const subjectQuery = `subject:${searchTerm}`;
     // If we know this vendor's real email domain, also match anything from that domain —
-    // catches real correspondence that doesn't happen to spell out the company name in
-    // the subject (e.g. someone at the GC emailing from their own domain about a project).
-    const fullQuery = knownDomain ? `(${subjectQuery}) OR from:@${knownDomain}` : subjectQuery;
+    // catches real correspondence that doesn't happen to spell out the company name
+    // anywhere (e.g. someone at the GC emailing from their own domain about a project).
+    const matchPart = knownDomain ? `(${searchTerm}) OR from:@${knownDomain}` : searchTerm;
+    // Exclude Maria's own sent replies and anything to/from Natalia or Vlad — this log is
+    // meant to show what the GC/vendor actually sent, not our own outgoing copies or
+    // internal forwards between the team. This also happens to be what keeps internal
+    // digest emails (like daily "EOD" recaps, always sent from Maria to Vlad) out, without
+    // needing to restrict the name search to the subject line — which was too narrow, since
+    // most real reply threads keep a generic subject like "RE: WESTBRIDGE Demo info" that
+    // never mentions the company name at all.
+    const fullQuery = `(${matchPart}) -from:maria@wbdfl.com -from:natalia@wbdfl.com -to:natalia@wbdfl.com -from:vlad@wbdfl.com -to:vlad@wbdfl.com`;
     const listRes = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(fullQuery)}&maxResults=8`,
       { headers: { Authorization: `Bearer ${gmailAccessToken}` } }
