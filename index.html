@@ -2621,10 +2621,13 @@ function queueSave(){
 
 // Bypasses the debounce and saves right away — used for closing the panel, and for
 // important one-off toggles (like the bidding-list checkbox) that shouldn't risk being
-// lost if the person closes the panel before the normal 400ms debounce fires.
+// lost if the person closes the panel before the normal 400ms debounce fires. Returns the
+// save's promise so callers that need to know it actually landed (e.g. before re-reading
+// this same data to decide how to render a card) can await it.
 function flushSaveNow(){
   if (saveTimer){ clearTimeout(saveTimer); saveTimer = null; }
-  if (currentVendor && currentDetail) saveVendorDetail(currentVendor.name, currentDetail);
+  if (currentVendor && currentDetail) return saveVendorDetail(currentVendor.name, currentDetail);
+  return Promise.resolve();
 }
 
 function renderChecklist(){
@@ -4383,14 +4386,14 @@ document.getElementById('addItemBtn').addEventListener('click', () => {
 document.getElementById('newItemInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('addItemBtn').click();
 });
-document.getElementById('closeDetailBtn').addEventListener('click', () => {
-  flushSaveNow();
+document.getElementById('closeDetailBtn').addEventListener('click', async () => {
+  await flushSaveNow();
   document.getElementById('detailOverlay').classList.remove('open');
   renderCards(currentFilter);
 });
-document.getElementById('detailOverlay').addEventListener('click', (e) => {
+document.getElementById('detailOverlay').addEventListener('click', async (e) => {
   if (e.target.id === 'detailOverlay'){
-    flushSaveNow();
+    await flushSaveNow();
     document.getElementById('detailOverlay').classList.remove('open');
     renderCards(currentFilter);
   }
