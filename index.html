@@ -952,6 +952,30 @@ const NOTE_KEY = 'westbridge-tracker-banner';
 const REFRESH_MS = 5 * 60 * 1000;
 let currentFilter = 'all';
 let data = [];
+// Per-vendor "on bidding list" flag, kept in sync with the tracker's saved data so filtering
+// can be done synchronously (see effectiveStatus below) instead of only patching the DOM after
+// the fact — that's what let a vendor confirmed as "Active" inside the tracker fail to show up
+// under the dedicated 🟢 "Active vendors" filter button, even though it looked correct in "All".
+let onBiddingListCache = {};
+async function refreshOnBiddingListCache(){
+  const entries = await Promise.all(data.map(async d => {
+    try {
+      const detail = await loadVendorDetail(d.name);
+      return [d.name, !!detail.onBiddingList];
+    } catch (e) { return [d.name, false]; }
+  }));
+  onBiddingListCache = Object.fromEntries(entries);
+}
+// The Sheet's status column is what decides which section/filter a card lives in, but Maria
+// can also confirm "we're on their bidding list" right inside the tracker (a flag this app DOES
+// control) without needing to go edit the Sheet by hand. This combines both into one status used
+// everywhere (both the "All" grouped sections AND the individual filter buttons), so confirming a
+// vendor here reliably moves it into the green "Active vendors" list right away.
+function effectiveStatus(d){
+  if (d.status === 'submitted') return 'submitted';
+  if (onBiddingListCache[d.name] && d.status !== 'active') return 'active';
+  return d.status;
+}
 let bannerState = { show: true, text: "License CBC1265846 expires 08/31/2026. Renewal in progress (confirmed by Benito 07/31/2026), but it has NOT been confirmed as already renewed. Verify status before submitting any new form that includes the expiration date or the license PDF." };
 
 const statusLabel = { submitted: "Submitted", pending: "In progress", blocked: "Not started", active: "Active Vendor" };
@@ -1036,43 +1060,10 @@ function renderStats(){
   `;
 }
 
-// The "status" that decides which colored section a card lives in comes from the Google
-// Sheet's Overview tab, which this app can only read — it can't write back to that column.
-// So when a vendor turns out to be "on bidding list" (a flag we DO control, stored per
-// vendor), but the Sheet's status hasn't been updated to match yet, this moves the card
-// into the green Active section visually instead, so Maria doesn't have to go edit the
-// Sheet by hand just to see it reflected here.
-function moveCardToActiveSection(card, d){
-  if (currentFilter !== 'all') return; // only the grouped "All" view has sections to move between
-  if (d.status === 'active' || d.status === 'submitted') return; // already there
-  const activeGrid = document.getElementById('grid-sec-active');
-  if (!activeGrid || activeGrid.contains(card)) return;
-
-  card.classList.remove(`status-${d.status}`);
-  card.classList.add('status-active');
-  const badge = card.querySelector('.badge');
-  if (badge){ badge.className = 'badge active'; badge.textContent = statusLabel.active; }
-  const hint = card.querySelector('.edit-hint');
-  if (hint) hint.textContent = 'View checklist →';
-
-  activeGrid.appendChild(card);
-  const activeBlock = document.getElementById('block-sec-active');
-  if (activeBlock) activeBlock.style.display = '';
-  const activeCount = document.getElementById('count-sec-active');
-  if (activeCount) activeCount.textContent = String(activeGrid.children.length);
-
-  // Shrink/hide the section this card came from.
-  const fromKey = d.status === 'pending' ? 'sec-pending' : 'sec-blocked';
-  const fromGrid = document.getElementById(`grid-${fromKey}`);
-  const fromCount = document.getElementById(`count-${fromKey}`);
-  const fromBlock = document.getElementById(`block-${fromKey}`);
-  if (fromCount && fromGrid) fromCount.textContent = String(fromGrid.children.length);
-  if (fromBlock && fromGrid && !fromGrid.children.length) fromBlock.style.display = 'none';
-}
-
 function buildCardEl(d){
+  const es = effectiveStatus(d); // combines Sheet status + the in-app "on bidding list" confirmation
   const card = document.createElement('div');
-  card.className = `card status-${d.status}`;
+  card.className = `card status-${es}`;
 
   let autoTag = '';
   if (d.autoLiability === true) autoTag = `<span class="tag auto">Requires Auto Liability — not covered</span>`;
@@ -1083,13 +1074,13 @@ function buildCardEl(d){
     : `<div class="blockers none"><ul><li>✅ No active blockers at this step</li></ul></div>`;
 
   card.innerHTML = `
-    <span class="edit-hint">${d.status === 'submitted' || d.status === 'active' ? 'View checklist →' : 'Needs update — view checklist →'}</span>
+    <span class="edit-hint">${es === 'submitted' || es === 'active' ? 'View checklist →' : 'Needs update — view checklist →'}</span>
     <div class="card-top">
       <div>
         <p class="gc-name">${escapeHtml(d.name)}</p>
         <p class="gc-sub">${escapeHtml(d.sub)}</p>
       </div>
-      <span class="badge ${d.status}">${statusLabel[d.status] || d.status}</span>
+      <span class="badge ${es}">${statusLabel[es] || es}</span>
     </div>
     <div class="card-body">${escapeHtml(d.summary)}</div>
     <div class="tag-row" id="tagrow-${slugify(d.name)}">${autoTag}${deadlineTag(d.deadline)}</div>
@@ -1105,12 +1096,13 @@ function buildCardEl(d){
   card.addEventListener('click', () => openVendorDetail(d));
 
   // Async: check if this vendor is already marked as on the bidding list, and flag it visually.
+  // (Sectioning/filtering itself no longer waits on this — effectiveStatus() above already
+  // has the answer synchronously from the prefetched cache — this just adds the little tag.)
   loadVendorDetail(d.name).then(detail => {
     const tagRow = card.querySelector(`#tagrow-${slugify(d.name)}`);
     if (!tagRow) return;
     if (detail.onBiddingList){
       tagRow.insertAdjacentHTML('beforeend', `<span class="tag auto ok">✓ On bidding list</span>`);
-      moveCardToActiveSection(card, d);
     }
     const methodShort = {
       website: { text: '🌐 Website', cls: 'website' },
@@ -1137,7 +1129,7 @@ function renderCards(filter){
   grid.innerHTML = '';
 
   if (filter !== 'all'){
-    const filtered = data.filter(d => d.status === filter);
+    const filtered = data.filter(d => effectiveStatus(d) === filter);
     if (!filtered.length){
       grid.innerHTML = '<div class="msg">No entries for this filter.</div>';
       return;
@@ -1163,7 +1155,7 @@ function renderCards(filter){
   }
 
   sections.forEach(section => {
-    const items = data.filter(d => section.statuses.includes(d.status));
+    const items = data.filter(d => section.statuses.includes(effectiveStatus(d)));
     const block = document.createElement('div');
     block.className = 'section-block';
     block.id = `block-${section.key}`;
@@ -1241,6 +1233,7 @@ async function loadData(){
     console.info('DEBUG detected column headers:', parsed.meta && parsed.meta.fields);
     data = rowsToData(parsed.data);
     console.info('DEBUG vendor -> link being used:', data.map(d => ({ name: d.name, sheetUrl: d.sheetUrl || '(none — will fall back to Overview row)' })));
+    await refreshOnBiddingListCache();
     renderStats();
     renderCards(currentFilter);
     document.getElementById('lastSynced').textContent = new Date().toLocaleString();
@@ -2771,6 +2764,11 @@ document.getElementById('vendorStatusToggle').addEventListener('click', () => {
   currentDetail.onBiddingList = !currentDetail.onBiddingList;
   renderBidCheckbox();
   flushSaveNow();
+  // Keep the background grid's cache in sync so the green "Active vendors" filter/section
+  // picks this up immediately instead of only after the next full page reload.
+  if (currentVendor){
+    onBiddingListCache[currentVendor.name] = currentDetail.onBiddingList;
+  }
 });
 
 // Modern browsers block navigating directly to large data: URLs (shows as "blocked").
@@ -2889,6 +2887,9 @@ document.getElementById('bidCheckbox').addEventListener('change', () => {
   currentDetail.onBiddingList = document.getElementById('bidCheckbox').checked;
   renderBidCheckbox();
   flushSaveNow();
+  if (currentVendor){
+    onBiddingListCache[currentVendor.name] = currentDetail.onBiddingList;
+  }
 });
 const MAX_FILE_BYTES = 25 * 1024 * 1024; // ~25MB — Drive's own upload limits are far higher, but this keeps browser memory/base64 overhead reasonable
 
@@ -3642,18 +3643,35 @@ async function searchGmailForCurrentVendor(){
     // most real reply threads keep a generic subject like "RE: WESTBRIDGE Demo info" that
     // never mentions the company name at all.
     const fullQuery = `(${matchPart}) -from:maria@wbdfl.com -from:natalia@wbdfl.com -to:natalia@wbdfl.com -from:vlad@wbdfl.com -to:vlad@wbdfl.com`;
-    const listRes = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(fullQuery)}&maxResults=8`,
-      { headers: { Authorization: `Bearer ${gmailAccessToken}` } }
-    );
-    if (listRes.status === 401){
-      gmailAccessToken = null;
-      showGmailDisconnected();
-      box.innerHTML = '<div class="cheat-note">Gmail connection expired — click "Connect Gmail" again.</div>';
-      return;
-    }
-    const listData = await listRes.json();
-    const messages = listData.messages || [];
+
+    // Gmail caps each page at maxResults, so a single request was silently dropping every
+    // match past the first 8 — a company with a longer thread history would look like it
+    // only ever emailed a handful of times. This now walks nextPageToken to pull every
+    // matching message, up to MAX_GMAIL_RESULTS total (a safety cap so one huge thread
+    // history can't turn a click into dozens of API calls).
+    const MAX_GMAIL_RESULTS = 60;
+    let messages = [];
+    let pageToken = undefined;
+    let hitCap = false;
+    do {
+      const pageUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(fullQuery)}&maxResults=25` +
+        (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '');
+      const listRes = await fetch(pageUrl, { headers: { Authorization: `Bearer ${gmailAccessToken}` } });
+      if (listRes.status === 401){
+        gmailAccessToken = null;
+        showGmailDisconnected();
+        box.innerHTML = '<div class="cheat-note">Gmail connection expired — click "Connect Gmail" again.</div>';
+        return;
+      }
+      const listData = await listRes.json();
+      messages = messages.concat(listData.messages || []);
+      pageToken = listData.nextPageToken;
+      if (messages.length >= MAX_GMAIL_RESULTS){
+        messages = messages.slice(0, MAX_GMAIL_RESULTS);
+        hitCap = !!pageToken;
+        break;
+      }
+    } while (pageToken);
 
     if (!messages.length){
       box.innerHTML = '<div class="cheat-note">No emails found for this search term.</div>';
@@ -3838,6 +3856,10 @@ async function searchGmailForCurrentVendor(){
 
       box.appendChild(card);
     });
+
+    if (hitCap){
+      box.insertAdjacentHTML('afterbegin', `<div class="cheat-note">Showing the first ${MAX_GMAIL_RESULTS} matching emails — there are more than that for this search. Narrow the search term above to see older ones.</div>`);
+    }
 
     // Automatically add every detected project (with project name) to "Pending / to send" —
     // each gets a real date field ready to fill in, whether or not a due date was found in the text.
