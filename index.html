@@ -972,6 +972,13 @@ async function refreshOnBiddingListCache(){
 // everywhere (both the "All" grouped sections AND the individual filter buttons), so confirming a
 // vendor here reliably moves it into the green "Active vendors" list right away.
 function effectiveStatus(d){
+  // Check for locally-stored status override from drag-and-drop
+  const normalized = norm(d.name);
+  const storageKey = `vendor-status-override:${normalized}`;
+  if (window.statusOverrides && window.statusOverrides[storageKey]){
+    return window.statusOverrides[storageKey];
+  }
+  
   if (d.status === 'submitted') return 'submitted';
   if (onBiddingListCache[d.name] && d.status !== 'active') return 'active';
   return d.status;
@@ -1064,6 +1071,9 @@ function buildCardEl(d){
   const es = effectiveStatus(d); // combines Sheet status + the in-app "on bidding list" confirmation
   const card = document.createElement('div');
   card.className = `card status-${es}`;
+  card.draggable = true;
+  card.dataset.vendorName = norm(d.name);
+  card.style.cursor = 'grab';
 
   let autoTag = '';
   if (d.autoLiability === true) autoTag = `<span class="tag auto">Requires Auto Liability — not covered</span>`;
@@ -1094,6 +1104,19 @@ function buildCardEl(d){
   `;
   card.title = 'Click to view and edit this vendor\'s prequalification checklist';
   card.addEventListener('click', () => openVendorDetail(d));
+  
+  // Drag-and-drop handlers
+  card.addEventListener('dragstart', (e) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/vendor-name', norm(d.name));
+    card.style.opacity = '0.5';
+    card.style.cursor = 'grabbing';
+  });
+  
+  card.addEventListener('dragend', (e) => {
+    card.style.opacity = '1';
+    card.style.cursor = 'grab';
+  });
 
   // Async: check if this vendor is already marked as on the bidding list, and flag it visually.
   // (Sectioning/filtering itself no longer waits on this — effectiveStatus() above already
@@ -1164,7 +1187,78 @@ function renderCards(filter){
     const sectionGrid = document.createElement('div');
     sectionGrid.className = 'grid';
     sectionGrid.id = `grid-${section.key}`;
+    sectionGrid.setAttribute('data-drop-section', section.key);
+    sectionGrid.style.minHeight = '200px';
+    sectionGrid.style.transition = 'all 0.2s ease';
+    
     items.forEach(d => sectionGrid.appendChild(buildCardEl(d)));
+    
+    // Drop zone handlers
+    sectionGrid.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      sectionGrid.style.borderRadius = '8px';
+      sectionGrid.style.border = '2px dashed var(--safety)';
+      sectionGrid.style.backgroundColor = 'rgba(255, 106, 26, 0.05)';
+    });
+    
+    sectionGrid.addEventListener('dragleave', (e) => {
+      if (e.target === sectionGrid){
+        sectionGrid.style.border = '';
+        sectionGrid.style.backgroundColor = '';
+      }
+    });
+    
+    sectionGrid.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const vendorName = e.dataTransfer.getData('text/vendor-name');
+      const statusMap = {
+        'sec-active': 'active',
+        'sec-pending': 'pending',
+        'sec-blocked': 'blocked'
+      };
+      const newStatus = statusMap[section.key];
+      
+      if (vendorName && newStatus){
+        const vendor = data.find(d => norm(d.name) === vendorName);
+        if (vendor){
+          // Update in-memory status
+          const oldStatus = vendor.status;
+          vendor.status = newStatus;
+          
+          // Save to local storage for persistence
+          const storageKey = `vendor-status-override:${vendorName}`;
+          window.statusOverrides[storageKey] = newStatus;
+          try {
+            localStorage.setItem('westbridge-status-overrides', JSON.stringify(window.statusOverrides));
+          } catch(err){
+            console.error('Could not save to localStorage:', err);
+          }
+          
+          // Also try to save to remote storage as backup
+          try {
+            await storage.set(storageKey, newStatus, false);
+          } catch(err){
+            console.error('Could not save to remote storage:', err);
+          }
+          
+          // Re-render
+          renderCards(currentFilter);
+          
+          // Show confirmation
+          const confirmMsg = document.createElement('div');
+          confirmMsg.style.cssText = 'position:fixed; top:20px; right:20px; background:var(--ok); color:white; padding:12px 16px; border-radius:8px; z-index:9999; font-size:14px; font-weight:700;';
+          confirmMsg.textContent = `✓ ${vendor.name} moved to ${newStatus}`;
+          document.body.appendChild(confirmMsg);
+          setTimeout(() => confirmMsg.remove(), 2000);
+        }
+      }
+      
+      sectionGrid.style.border = '';
+      sectionGrid.style.backgroundColor = '';
+    });
+    
     block.appendChild(sectionGrid);
     grid.appendChild(block);
   });
@@ -4447,6 +4541,22 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
 });
 document.getElementById('refreshBtn').addEventListener('click', loadData);
 
+// Load status overrides from drag-and-drop operations
+window.statusOverrides = {};
+async function loadStatusOverrides(){
+  try {
+    // Check for any stored vendor status overrides
+    const overridesStr = localStorage.getItem('westbridge-status-overrides');
+    if (overridesStr){
+      window.statusOverrides = JSON.parse(overridesStr);
+    }
+  } catch(e){
+    console.log('No status overrides saved yet');
+    window.statusOverrides = {};
+  }
+}
+
+loadStatusOverrides();
 loadBanner();
 loadSyncedBy();
 loadData();
