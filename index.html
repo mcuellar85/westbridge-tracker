@@ -2738,7 +2738,7 @@ document.getElementById('companyDocsOverlay').addEventListener('click', (e) => {
      not-started (red)  -> in-progress (orange, with a "currently working" toggle)  -> ready (green)
    Data source: a second published-CSV tab in the same Google Sheet, named "Bid Projects".
    PASTE that tab's published CSV URL below once you've published it (File > Share > Publish to web). */
-const BID_PROJECTS_CSV_URL = "PASTE_BID_PROJECTS_CSV_URL_HERE";
+const BID_PROJECTS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBM3CR9_fQd0cmbYr4hsrPwfHr6MOFYCG5dfban9hK0NJiRg4x_OVFlQxwp96kdro4A8CfFzD3KD1G/pub?gid=2054207157&single=true&output=csv";
 const BID_PROJECTS_STORAGE_KEY = "westbridge-bid-projects"; // fallback / local additions, keyed by id
 
 let bidProjects = []; // [{id, project, company, platform, deadline, status, working, notes, link}]
