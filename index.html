@@ -1036,6 +1036,40 @@ function renderStats(){
   `;
 }
 
+// The "status" that decides which colored section a card lives in comes from the Google
+// Sheet's Overview tab, which this app can only read — it can't write back to that column.
+// So when a vendor turns out to be "on bidding list" (a flag we DO control, stored per
+// vendor), but the Sheet's status hasn't been updated to match yet, this moves the card
+// into the green Active section visually instead, so Maria doesn't have to go edit the
+// Sheet by hand just to see it reflected here.
+function moveCardToActiveSection(card, d){
+  if (currentFilter !== 'all') return; // only the grouped "All" view has sections to move between
+  if (d.status === 'active' || d.status === 'submitted') return; // already there
+  const activeGrid = document.getElementById('grid-sec-active');
+  if (!activeGrid || activeGrid.contains(card)) return;
+
+  card.classList.remove(`status-${d.status}`);
+  card.classList.add('status-active');
+  const badge = card.querySelector('.badge');
+  if (badge){ badge.className = 'badge active'; badge.textContent = statusLabel.active; }
+  const hint = card.querySelector('.edit-hint');
+  if (hint) hint.textContent = 'View checklist →';
+
+  activeGrid.appendChild(card);
+  const activeBlock = document.getElementById('block-sec-active');
+  if (activeBlock) activeBlock.style.display = '';
+  const activeCount = document.getElementById('count-sec-active');
+  if (activeCount) activeCount.textContent = String(activeGrid.children.length);
+
+  // Shrink/hide the section this card came from.
+  const fromKey = d.status === 'pending' ? 'sec-pending' : 'sec-blocked';
+  const fromGrid = document.getElementById(`grid-${fromKey}`);
+  const fromCount = document.getElementById(`count-${fromKey}`);
+  const fromBlock = document.getElementById(`block-${fromKey}`);
+  if (fromCount && fromGrid) fromCount.textContent = String(fromGrid.children.length);
+  if (fromBlock && fromGrid && !fromGrid.children.length) fromBlock.style.display = 'none';
+}
+
 function buildCardEl(d){
   const card = document.createElement('div');
   card.className = `card status-${d.status}`;
@@ -1076,6 +1110,7 @@ function buildCardEl(d){
     if (!tagRow) return;
     if (detail.onBiddingList){
       tagRow.insertAdjacentHTML('beforeend', `<span class="tag auto ok">✓ On bidding list</span>`);
+      moveCardToActiveSection(card, d);
     }
     const methodShort = {
       website: { text: '🌐 Website', cls: 'website' },
@@ -1114,30 +1149,33 @@ function renderCards(filter){
   // "All" groups everything into 3 clear sections instead of one flat mixed list — active
   // vendors together, warm/in-progress leads together, and what's blocked/needs
   // prequalification together, matching how Maria actually works through these day to day.
+  // Sections always render (even with 0 items) so a card can be moved into "Active" later
+  // once we find out — asynchronously — that it's marked "on bidding list" (see buildCardEl).
   const sections = [
     { key: 'sec-active', title: '🟢 Active Vendors', statuses: ['active', 'submitted'] },
     { key: 'sec-pending', title: '🟡 Warm Leads / In Progress', statuses: ['pending'] },
     { key: 'sec-blocked', title: '🔴 Needs Prequalification', statuses: ['blocked'] },
   ];
 
-  let anyRendered = false;
+  if (!data.length){
+    grid.innerHTML = '<div class="msg">No entries yet.</div>';
+    return;
+  }
+
   sections.forEach(section => {
     const items = data.filter(d => section.statuses.includes(d.status));
-    if (!items.length) return;
-    anyRendered = true;
     const block = document.createElement('div');
     block.className = 'section-block';
-    block.innerHTML = `<div class="section-header ${section.key}"><span class="section-title">${section.title}</span><span class="section-count">${items.length}</span></div>`;
+    block.id = `block-${section.key}`;
+    block.style.display = items.length ? '' : 'none';
+    block.innerHTML = `<div class="section-header ${section.key}"><span class="section-title">${section.title}</span><span class="section-count" id="count-${section.key}">${items.length}</span></div>`;
     const sectionGrid = document.createElement('div');
     sectionGrid.className = 'grid';
+    sectionGrid.id = `grid-${section.key}`;
     items.forEach(d => sectionGrid.appendChild(buildCardEl(d)));
     block.appendChild(sectionGrid);
     grid.appendChild(block);
   });
-
-  if (!anyRendered){
-    grid.innerHTML = '<div class="msg">No entries yet.</div>';
-  }
 }
 
 function setDot(state){ document.getElementById('liveDot').className = state; }
@@ -4348,11 +4386,13 @@ document.getElementById('newItemInput').addEventListener('keydown', (e) => {
 document.getElementById('closeDetailBtn').addEventListener('click', () => {
   flushSaveNow();
   document.getElementById('detailOverlay').classList.remove('open');
+  renderCards(currentFilter);
 });
 document.getElementById('detailOverlay').addEventListener('click', (e) => {
   if (e.target.id === 'detailOverlay'){
     flushSaveNow();
     document.getElementById('detailOverlay').classList.remove('open');
+    renderCards(currentFilter);
   }
 });
 
