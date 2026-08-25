@@ -893,6 +893,12 @@
       <button class="close-x" id="closeBidProjectsBtn">✕</button>
     </div>
     <div id="bidProjectsSyncNote" style="font-size:11.5px; color:var(--text-dim); margin-bottom:14px;">Live source: Google Sheet (Bid Projects tab)</div>
+    <div style="margin-bottom:16px;">
+      <button id="askClaudeBtn" class="btn primary" style="background:#FF6A1A; border-color:#FF6A1A; color:#1a1a1a;">
+        🤖 Ask Claude: What's Missing?
+      </button>
+      <span style="font-size:11px; color:var(--text-dim); margin-left:10px;">Opens a new Claude conversation to review this board and your vendor sheet for gaps</span>
+    </div>
     <div id="bidProjectsBoard">
       <div class="msg">Loading bid projects…</div>
     </div>
@@ -2987,6 +2993,9 @@ document.getElementById('deleteBidProjectBtn').addEventListener('click', async (
 document.getElementById('bidProjectsBtn').addEventListener('click', async () => {
   document.getElementById('bidProjectsOverlay').classList.add('open');
   await loadBidProjects();
+});
+document.getElementById('askClaudeBtn').addEventListener('click', () => {
+  window.open('https://claude.ai/new', '_blank');
 });
 document.getElementById('closeBidProjectsBtn').addEventListener('click', () => {
   document.getElementById('bidProjectsOverlay').classList.remove('open');
