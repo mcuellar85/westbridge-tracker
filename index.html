@@ -111,6 +111,13 @@
   .refresh-btn:hover{ border-color:var(--safety); }
 
   .grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap:16px; }
+  .section-block{ margin-bottom: 32px; }
+  .section-header{ display:flex; align-items:baseline; gap:10px; margin-bottom:14px; padding-bottom:8px; border-bottom:2px solid var(--line); }
+  .section-header .section-title{ font-size:17px; font-weight:800; letter-spacing:0.01em; }
+  .section-header .section-count{ font-size:13px; color:var(--text-dim); font-weight:600; }
+  .section-header.sec-active .section-title{ color:var(--ok); }
+  .section-header.sec-pending .section-title{ color:var(--warn); }
+  .section-header.sec-blocked .section-title{ color:var(--danger); }
   .card{
     background:var(--panel); border:1px solid var(--line); border-radius:12px;
     padding:18px 18px 16px; position:relative; overflow:hidden;
@@ -121,6 +128,7 @@
   .card:hover .edit-hint{ opacity:1; color:var(--safety); }
   .card::before{ content:""; position:absolute; top:0; left:0; width:100%; height:4px; }
   .card.status-submitted::before{ background: var(--ok); }
+  .card.status-active::before{ background: var(--ok); }
   .card.status-pending::before{ background: var(--warn); }
   .card.status-blocked::before{ background: var(--danger); }
 
@@ -133,6 +141,7 @@
     padding:4px 9px; border-radius:5px; white-space:nowrap;
   }
   .badge.submitted{ background:var(--ok-dim); color:var(--ok); }
+  .badge.active{ background:var(--ok-dim); color:var(--ok); }
   .badge.pending{ background:var(--warn-dim); color:var(--warn); }
   .badge.blocked{ background:var(--danger-dim); color:var(--danger); }
 
@@ -426,6 +435,17 @@
   .ci-remove{ background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:13px; padding:0 4px; }
   .ci-remove:hover{ color:var(--danger); }
   .add-item-row{ display:flex; gap:8px; margin-top:8px; }
+  .followup-row{ display:flex; align-items:center; gap:10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:8px; }
+  .followup-row.done{ opacity:0.5; }
+  .followup-row.done .followup-name{ text-decoration:line-through; }
+  .followup-row input[type="checkbox"]{ width:18px; height:18px; flex-shrink:0; cursor:pointer; accent-color: var(--ok); }
+  .followup-name{ flex:1; min-width:120px; background:transparent; border:none; color:var(--text); font-size:14px; font-weight:600; padding:4px; }
+  .followup-name:focus{ outline:1px solid var(--safety); border-radius:4px; }
+  .followup-action{ background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:6px; padding:5px 8px; font-size:12px; flex-shrink:0; }
+  .followup-notes{ flex:1.4; min-width:100px; background:transparent; border:none; border-bottom:1px dashed var(--line); color:var(--text-dim); font-size:12px; padding:4px; }
+  .followup-notes:focus{ outline:none; border-bottom-color:var(--safety); }
+  .followup-remove{ background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; padding:2px 6px; flex-shrink:0; }
+  .followup-remove:hover{ color:var(--danger); }
   .add-item-row input{ flex:1; background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:7px; padding:8px 10px; font-size:12.5px; }
   .add-item-row button{ background:var(--panel-2); border:1px dashed var(--line); color:var(--text-dim); border-radius:7px; padding:8px 14px; font-size:12px; cursor:pointer; }
 
@@ -464,12 +484,14 @@
 
   <div class="filters" id="filters">
     <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="active">🟢 Active vendors</button>
+    <button class="filter-btn" data-filter="pending">🟡 In progress / warm</button>
+    <button class="filter-btn" data-filter="blocked">🔴 Blocked / not started</button>
     <button class="filter-btn" data-filter="submitted">Submitted</button>
-    <button class="filter-btn" data-filter="pending">In progress</button>
-    <button class="filter-btn" data-filter="blocked">Blocked / not started</button>
     <button class="refresh-btn" id="platformAccessBtn" style="margin-left:auto;">🔑 Platform Access</button>
     <button class="refresh-btn" id="companyDocsBtn">📄 Company Documents</button>
     <button class="refresh-btn" id="cheatSheetBtn">📋 Base Cheat Sheet Template</button>
+    <button class="refresh-btn" id="followUpBtn">📞 Follow-Up List</button>
     <button class="refresh-btn" id="refreshBtn">↻ Refresh now</button>
   </div>
 
@@ -532,6 +554,11 @@
           <label><input type="checkbox" class="app-method-cb" value="platform"> 🔑 Platform portal</label>
           <label><input type="checkbox" class="app-method-cb" value="phone"> 📞 Already in (phone)</label>
         </div>
+      </div>
+      <div class="app-method-row">
+        <div class="amr-title">Company email domain (e.g. millerconstruction.com)</div>
+        <input type="text" id="companyDomainInput" placeholder="e.g. millerconstruction.com" style="width:100%; background:var(--panel); border:1px solid var(--line); color:var(--text); border-radius:7px; padding:8px 10px; font-size:13px;">
+        <div class="file-hint" style="margin-top:6px;">Used to double-check which emails really came from this company, instead of relying only on the name matching somewhere in the text.</div>
       </div>
     </div>
 
@@ -739,6 +766,27 @@
 </div>
 
 <!-- Bidding platform access (usernames/links only — never store real passwords here) -->
+<!-- Quick follow-up list: people/companies who asked for a brochure, a text, or a call from
+     Vlad — separate from the full vendor prequalification cards, since these don't need a
+     whole checklist, just "who, what action, done or not". -->
+<div class="overlay" id="followUpOverlay">
+  <div class="modal detail-modal">
+    <div class="detail-head">
+      <div>
+        <h2>📞 Follow-Up List</h2>
+        <div class="sub">People/companies who asked for a brochure, a text, or a call from Vlad — quick to-dos, not full vendor profiles</div>
+      </div>
+      <button class="close-x" id="closeFollowUpBtn">✕</button>
+    </div>
+    <p class="cheat-note">Check items off as you complete them — done items move to the bottom automatically so this stays easy to scan.</p>
+    <div id="followUpBox"></div>
+    <div class="add-item-row">
+      <input type="text" id="newFollowUpNameInput" placeholder="Name of person or company...">
+      <button id="addFollowUpBtn">+ Add</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="platformOverlay">
   <div class="modal detail-modal">
     <div class="detail-head">
@@ -885,7 +933,7 @@ let currentFilter = 'all';
 let data = [];
 let bannerState = { show: true, text: "License CBC1265846 expires 08/31/2026. Renewal in progress (confirmed by Benito 07/31/2026), but it has NOT been confirmed as already renewed. Verify status before submitting any new form that includes the expiration date or the license PDF." };
 
-const statusLabel = { submitted: "Submitted", pending: "In progress", blocked: "Not started" };
+const statusLabel = { submitted: "Submitted", pending: "In progress", blocked: "Not started", active: "Active Vendor" };
 
 function norm(v){ return (v || "").toString().trim(); }
 function toBool(v){
@@ -967,73 +1015,108 @@ function renderStats(){
   `;
 }
 
+function buildCardEl(d){
+  const card = document.createElement('div');
+  card.className = `card status-${d.status}`;
+
+  let autoTag = '';
+  if (d.autoLiability === true) autoTag = `<span class="tag auto">Requires Auto Liability — not covered</span>`;
+  if (d.autoLiability === false) autoTag = `<span class="tag auto ok">Auto Liability not required</span>`;
+
+  const blockersHtml = d.blockers.length
+    ? `<div class="blockers"><div class="blockers-title">Needed before this can be submitted</div><ul>${d.blockers.map(b => `<li>${escapeHtml(b)}</li>`).join('')}</ul></div>`
+    : `<div class="blockers none"><ul><li>✅ No active blockers at this step</li></ul></div>`;
+
+  card.innerHTML = `
+    <span class="edit-hint">${d.status === 'submitted' || d.status === 'active' ? 'View checklist →' : 'Needs update — view checklist →'}</span>
+    <div class="card-top">
+      <div>
+        <p class="gc-name">${escapeHtml(d.name)}</p>
+        <p class="gc-sub">${escapeHtml(d.sub)}</p>
+      </div>
+      <span class="badge ${d.status}">${statusLabel[d.status] || d.status}</span>
+    </div>
+    <div class="card-body">${escapeHtml(d.summary)}</div>
+    <div class="tag-row" id="tagrow-${slugify(d.name)}">${autoTag}${deadlineTag(d.deadline)}</div>
+    <div class="meta-row">
+      ${d.responsible ? `<span>Owner: <b>${escapeHtml(d.responsible)}</b></span>` : ''}
+      ${d.lastUpdated ? `<span>Updated: <b>${escapeHtml(d.lastUpdated)}</b></span>` : ''}
+      ${d.deadline ? `<span>GC deadline: <b>${escapeHtml(d.deadline)}</b></span>` : ''}
+      ${d.dateSubmitted ? `<span>We submitted: <b>${escapeHtml(d.dateSubmitted)}</b></span>` : ''}
+    </div>
+    ${blockersHtml}
+  `;
+  card.title = 'Click to view and edit this vendor\'s prequalification checklist';
+  card.addEventListener('click', () => openVendorDetail(d));
+
+  // Async: check if this vendor is already marked as on the bidding list, and flag it visually.
+  loadVendorDetail(d.name).then(detail => {
+    const tagRow = card.querySelector(`#tagrow-${slugify(d.name)}`);
+    if (!tagRow) return;
+    if (detail.onBiddingList){
+      tagRow.insertAdjacentHTML('beforeend', `<span class="tag auto ok">✓ On bidding list</span>`);
+    }
+    const methodShort = {
+      website: { text: '🌐 Website', cls: 'website' },
+      pdf: { text: '📄 PDF/Email', cls: 'pdf' },
+      platform: { text: '🔑 Platform portal', cls: 'platform' },
+      phone: { text: '📞 Already in (phone)', cls: 'phone' }
+    };
+    const methods = detail.applicationMethods || [];
+    if (methods.length === 1){
+      const m = methodShort[methods[0]];
+      if (m) tagRow.insertAdjacentHTML('beforeend', `<span class="method-badge ${m.cls}">${m.text}</span>`);
+    } else if (methods.length > 1){
+      const combined = methods.map(k => (methodShort[k] || {}).text).filter(Boolean).join(' + ');
+      tagRow.insertAdjacentHTML('beforeend', `<span class="method-badge mixed">🔀 Mixed: ${combined}</span>`);
+    }
+  }).catch(() => {});
+
+  return card;
+}
+
 function renderCards(filter){
   currentFilter = filter;
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
-  const filtered = data.filter(d => filter === 'all' || d.status === filter);
-  if (!filtered.length){
-    grid.innerHTML = '<div class="msg">No entries for this filter.</div>';
+
+  if (filter !== 'all'){
+    const filtered = data.filter(d => d.status === filter);
+    if (!filtered.length){
+      grid.innerHTML = '<div class="msg">No entries for this filter.</div>';
+      return;
+    }
+    filtered.forEach(d => grid.appendChild(buildCardEl(d)));
     return;
   }
-  filtered.forEach(d => {
-    const card = document.createElement('div');
-    card.className = `card status-${d.status}`;
 
-    let autoTag = '';
-    if (d.autoLiability === true) autoTag = `<span class="tag auto">Requires Auto Liability — not covered</span>`;
-    if (d.autoLiability === false) autoTag = `<span class="tag auto ok">Auto Liability not required</span>`;
+  // "All" groups everything into 3 clear sections instead of one flat mixed list — active
+  // vendors together, warm/in-progress leads together, and what's blocked/needs
+  // prequalification together, matching how Maria actually works through these day to day.
+  const sections = [
+    { key: 'sec-active', title: '🟢 Active Vendors', statuses: ['active', 'submitted'] },
+    { key: 'sec-pending', title: '🟡 Warm Leads / In Progress', statuses: ['pending'] },
+    { key: 'sec-blocked', title: '🔴 Needs Prequalification', statuses: ['blocked'] },
+  ];
 
-    const blockersHtml = d.blockers.length
-      ? `<div class="blockers"><div class="blockers-title">Needed before this can be submitted</div><ul>${d.blockers.map(b => `<li>${escapeHtml(b)}</li>`).join('')}</ul></div>`
-      : `<div class="blockers none"><ul><li>✅ No active blockers at this step</li></ul></div>`;
-
-    card.innerHTML = `
-      <span class="edit-hint">${d.status === 'submitted' ? 'View checklist →' : 'Needs update — view checklist →'}</span>
-      <div class="card-top">
-        <div>
-          <p class="gc-name">${escapeHtml(d.name)}</p>
-          <p class="gc-sub">${escapeHtml(d.sub)}</p>
-        </div>
-        <span class="badge ${d.status}">${statusLabel[d.status] || d.status}</span>
-      </div>
-      <div class="card-body">${escapeHtml(d.summary)}</div>
-      <div class="tag-row" id="tagrow-${slugify(d.name)}">${autoTag}${deadlineTag(d.deadline)}</div>
-      <div class="meta-row">
-        ${d.responsible ? `<span>Owner: <b>${escapeHtml(d.responsible)}</b></span>` : ''}
-        ${d.lastUpdated ? `<span>Updated: <b>${escapeHtml(d.lastUpdated)}</b></span>` : ''}
-        ${d.deadline ? `<span>GC deadline: <b>${escapeHtml(d.deadline)}</b></span>` : ''}
-        ${d.dateSubmitted ? `<span>We submitted: <b>${escapeHtml(d.dateSubmitted)}</b></span>` : ''}
-      </div>
-      ${blockersHtml}
-    `;
-    card.title = 'Click to view and edit this vendor\'s prequalification checklist';
-    card.addEventListener('click', () => openVendorDetail(d));
-    grid.appendChild(card);
-
-    // Async: check if this vendor is already marked as on the bidding list, and flag it visually.
-    loadVendorDetail(d.name).then(detail => {
-      const tagRow = document.getElementById(`tagrow-${slugify(d.name)}`);
-      if (!tagRow) return;
-      if (detail.onBiddingList){
-        tagRow.insertAdjacentHTML('beforeend', `<span class="tag auto ok">✓ On bidding list</span>`);
-      }
-      const methodShort = {
-        website: { text: '🌐 Website', cls: 'website' },
-        pdf: { text: '📄 PDF/Email', cls: 'pdf' },
-        platform: { text: '🔑 Platform portal', cls: 'platform' },
-        phone: { text: '📞 Already in (phone)', cls: 'phone' }
-      };
-      const methods = detail.applicationMethods || [];
-      if (methods.length === 1){
-        const m = methodShort[methods[0]];
-        if (m) tagRow.insertAdjacentHTML('beforeend', `<span class="method-badge ${m.cls}">${m.text}</span>`);
-      } else if (methods.length > 1){
-        const combined = methods.map(k => (methodShort[k] || {}).text).filter(Boolean).join(' + ');
-        tagRow.insertAdjacentHTML('beforeend', `<span class="method-badge mixed">🔀 Mixed: ${combined}</span>`);
-      }
-    }).catch(() => {});
+  let anyRendered = false;
+  sections.forEach(section => {
+    const items = data.filter(d => section.statuses.includes(d.status));
+    if (!items.length) return;
+    anyRendered = true;
+    const block = document.createElement('div');
+    block.className = 'section-block';
+    block.innerHTML = `<div class="section-header ${section.key}"><span class="section-title">${section.title}</span><span class="section-count">${items.length}</span></div>`;
+    const sectionGrid = document.createElement('div');
+    sectionGrid.className = 'grid';
+    items.forEach(d => sectionGrid.appendChild(buildCardEl(d)));
+    block.appendChild(sectionGrid);
+    grid.appendChild(block);
   });
+
+  if (!anyRendered){
+    grid.innerHTML = '<div class="msg">No entries yet.</div>';
+  }
 }
 
 function setDot(state){ document.getElementById('liveDot').className = state; }
@@ -1541,6 +1624,456 @@ document.getElementById('platformOverlay').addEventListener('click', (e) => {
   }
 });
 
+/* ---------- Quick Follow-Up List (brochure / text / Vlad call to-dos) ---------- */
+const FOLLOWUP_LIST_KEY = 'westbridge-followup-list';
+let followUpData = [];
+
+// Pre-loaded from Maria's "Contactos Para Vlad — Llamadas/SMS" spreadsheet — shows up
+// automatically the first time this list is opened. Once anything is edited/saved here,
+// this default is never used again (the saved version in the Sheet takes over).
+const DEFAULT_FOLLOWUP_CONTACTS = [
+  {
+    "name": "Avi Custom Cabinets",
+    "action": "Other",
+    "notes": "+1 954-778-9292 — Abreviada como ACC — [orig: Contacto General]",
+    "done": false
+  },
+  {
+    "name": "Myxcell",
+    "action": "Other",
+    "notes": "Para preguntas de configuración — [orig: Soporte Técnico]",
+    "done": false
+  },
+  {
+    "name": "Jonathan Hallet (Nino Moreno)",
+    "action": "Call",
+    "notes": "954-340-1409 — Información de la compañía enviada — [orig: Llamar/Email]",
+    "done": false
+  },
+  {
+    "name": "María (LRG Construction)",
+    "action": "Send Text",
+    "notes": "+1 754-971-0425 — Responderá con email — [orig: Enviar SMS + Email]",
+    "done": false
+  },
+  {
+    "name": "Adam (A.N.O Quality Construction)",
+    "action": "Send Text",
+    "notes": "+1 786-901-3178 — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "Will (Ground Up Construction)",
+    "action": "Send Text",
+    "notes": "+1 561-539-6650 — Necesita 2 demoliciones urgentes — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "David (Love by Design)",
+    "action": "Call",
+    "notes": "+1 561-294-5668 — Cocina, tiene trabajo disponible — [orig: Llamar]",
+    "done": false
+  },
+  {
+    "name": "Jerry (Palm Beach Kitchen and Design Company)",
+    "action": "Send Text",
+    "notes": "+1 973-876-4104 — Número personal — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "A Topping Plumbing",
+    "action": "Send Text",
+    "notes": "+1 561-298-9976 — Compañía de plomería — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "Lori (My Own Plumbing)",
+    "action": "Call",
+    "notes": "Proyectos próximos — [orig: Llamar después navidad]",
+    "done": false
+  },
+  {
+    "name": "Boris Fernandez (Fernandez Plumbing)",
+    "action": "Call",
+    "notes": "+1 561-800-7381 — Proyectos próximos — [orig: Llamar/Email]",
+    "done": false
+  },
+  {
+    "name": "Jerry (Plumbing)",
+    "action": "Send Text",
+    "notes": "+1 561-225-3476 — Plomero — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "Michael (MJS Plumbing)",
+    "action": "Call",
+    "notes": "+1 954-907-2152 — Core drilling y servicios relacionados — [orig: Llamar]",
+    "done": false
+  },
+  {
+    "name": "John (Chandler Construction)",
+    "action": "Call",
+    "notes": "+1 561-791-6934 ext 2 — Dial ext 2, muchos proyectos disponibles — [orig: Llamar]",
+    "done": false
+  },
+  {
+    "name": "Michael (Buffington Construction)",
+    "action": "Send Text",
+    "notes": "+1 561-573-3850 — [orig: Enviar SMS + Llamar próxima semana]",
+    "done": false
+  },
+  {
+    "name": "Atlantic View Builders",
+    "action": "Send Text",
+    "notes": "+1 561-560-7556 — En Atlantis — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "Dylan (DBS Roofing)",
+    "action": "Call",
+    "notes": "+1 954-947-7439 — Techos/Roofing — [orig: Llamar]",
+    "done": false
+  },
+  {
+    "name": "Vincent (Stonegate Contracting Group)",
+    "action": "Call",
+    "notes": "+1 954-906-5586 — Espera llamada, proyectos disponibles — [orig: Llamar ASAP]",
+    "done": false
+  },
+  {
+    "name": "Oscar (Boynton Beach Concrete Specialists)",
+    "action": "Send Text",
+    "notes": "+1 954-444-0718 — Proyectos DEMO frecuentes — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "Peter (QSM General)",
+    "action": "Send Text",
+    "notes": "+1 561-932-6348 — peter@qms209.com — Enviar licencias e insurances — [orig: Enviar SMS/Email]",
+    "done": false
+  },
+  {
+    "name": "Kate (Highland Contractors Inc)",
+    "action": "Send Email",
+    "notes": "+1 561-784-7650 — admin@highlandcontractorsinc.com — [orig: Enviar Licencias/Insurances]",
+    "done": false
+  },
+  {
+    "name": "Arpad",
+    "action": "Send Text",
+    "notes": "+1 754-368-3444 — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "Will (Ground Up Construction)",
+    "action": "Send Email",
+    "notes": "+1 561-538-6650 — Demolición y construcción — [orig: Email enviado]",
+    "done": true
+  },
+  {
+    "name": "Paving Maven",
+    "action": "Send Text",
+    "notes": "+1 561-271-7665 — Equipo de estimating — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "Oscar (Palm Beach Outdoor Contracting)",
+    "action": "Send Email",
+    "notes": "+1 561-515-9409 — [orig: Email enviado]",
+    "done": true
+  },
+  {
+    "name": "Dominque (Ekert Concrete Cutting)",
+    "action": "Send Text",
+    "notes": "Dueño, proyectos en Miami/Tampa — [orig: Enviar SMS + Llamar lunes]",
+    "done": false
+  },
+  {
+    "name": "Andrea (Banyan Construction Group)",
+    "action": "Send Email",
+    "notes": "Preguntó sobre permisos — [orig: Email enviado]",
+    "done": true
+  },
+  {
+    "name": "Jeremy (Petra Builders)",
+    "action": "Call",
+    "notes": "+1 561-933-1818 — Quiere revisar seguros/licencias — [orig: Llamar]",
+    "done": false
+  },
+  {
+    "name": "Dann",
+    "action": "Send Text",
+    "notes": "+1 561-633-9891 — Callaghan1@ymail.com — Proyectos próximos — [orig: Enviar Email + SMS]",
+    "done": false
+  },
+  {
+    "name": "Mark Harrison (The Harrison Company)",
+    "action": "Call",
+    "notes": "+1 407-252-5855 — markharrison@theharrisoncompany.net — Proyectos próximos — [orig: Llamar]",
+    "done": false
+  },
+  {
+    "name": "JUDA Construction",
+    "action": "Call",
+    "notes": "+1 561-856-9026 — info@judacontractor.com — Servicios DEMO — [orig: Llamar]",
+    "done": false
+  },
+  {
+    "name": "Christian Garcia",
+    "action": "Send Text",
+    "notes": "+1 561-853-6431 — Pregunta sobre precio por sq ft demo — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "Frank (Design Builds Professionals 1)",
+    "action": "Send Text",
+    "notes": "+561-374-0060 — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "Claudio (HAEZ Construction)",
+    "action": "Send Text",
+    "notes": "+1 561-777-4585 — claudio@haezconstruction.com — [orig: Email/SMS]",
+    "done": false
+  },
+  {
+    "name": "Christopher Kagan",
+    "action": "Call",
+    "notes": "+1 239-707-7777 — christopher.kagan@gmail.com — Ganó proyecto, contacto urgente — [orig: Email/Llamar ASAP]",
+    "done": false
+  },
+  {
+    "name": "Noel (MN Shell)",
+    "action": "Call",
+    "notes": "+1 786-479-9948 — noel@mnshell.com — Construcción + demolición — [orig: Llamar]",
+    "done": false
+  },
+  {
+    "name": "John (Chandler Construction Company)",
+    "action": "Call",
+    "notes": "+1 561-791-6934 ext 101 — Demolición y construcción — [orig: Llamar próxima semana]",
+    "done": false
+  },
+  {
+    "name": "Amine (Kore Construction)",
+    "action": "Call",
+    "notes": "+1 561-560-6060 — Proyecto DEMO disponible — [orig: Llamar ahora]",
+    "done": false
+  },
+  {
+    "name": "Unknown",
+    "action": "Call",
+    "notes": "+1 561-589-8575 — Dueña, proyectos próximos — [orig: Llamar ahora]",
+    "done": false
+  },
+  {
+    "name": "Admir (Atlantic Coast Construction)",
+    "action": "Send Text",
+    "notes": "+1 904-607-2009 — Preguntó si solo demolición — [orig: Enviar SMS/Email]",
+    "done": false
+  },
+  {
+    "name": "Trent Mayer (Mayerworks Construction)",
+    "action": "Send Text",
+    "notes": "+1 561-628-7994 — [orig: Enviar SMS + Email]",
+    "done": false
+  },
+  {
+    "name": "J Fitzgerald (Unknown/Construcción)",
+    "action": "Send Text",
+    "notes": "+1 954-444-6099 — Dueño, nos metería en su lista de subcontratistas — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "Jake (Cavadium)",
+    "action": "Send Text",
+    "notes": "+1 561-295-7575 — jake@cavadium.com — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "CJ",
+    "action": "Send Text",
+    "notes": "+1 561-504-6988 — Necesita DEMO constantemente — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "Ben (Eagle General Contracting Group Corp)",
+    "action": "Send Text",
+    "notes": "+1 954-549-4976 — Proyectos próximos — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "Dino (Cmetric Construction)",
+    "action": "Send Text",
+    "notes": "+1 561-749-9403 — Tiene trabajos en el momento — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "Thomas (Superior Construction Group)",
+    "action": "Call",
+    "notes": "+1 239-362-1499 — Buscando subcontratistas DEMO — [orig: Llamar]",
+    "done": false
+  },
+  {
+    "name": "Godmade Precise Construction INC",
+    "action": "Send Text",
+    "notes": "+1 561-723-3500 — Dueño ocupado en ese momento — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "Matt (North Palm Builders)",
+    "action": "Call",
+    "notes": "+1 561-714-2619 — Email ya enviado — [orig: Llamar hoy]",
+    "done": false
+  },
+  {
+    "name": "Luke (LB Builders)",
+    "action": "Send Text",
+    "notes": "+1 561-307-9551 — Proyectos para pujar — [orig: Enviar SMS]",
+    "done": false
+  },
+  {
+    "name": "Mike (Florida Atlantic Construction)",
+    "action": "Call",
+    "notes": "+1 561-239-5917 — Proyecto para próxima semana — [orig: Llamar]",
+    "done": false
+  },
+  {
+    "name": "Irfan Syed (Irfanullah) (Moss Associates)",
+    "action": "Call",
+    "notes": "+1 954-524-5678 — Proyecto DEMO grande — [orig: Llamar]",
+    "done": false
+  }
+];
+
+async function loadFollowUpList(){
+  try {
+    const res = await storage.get(FOLLOWUP_LIST_KEY, true);
+    if (res && res.value) return JSON.parse(res.value);
+  } catch (e) { /* none saved yet */ }
+  return DEFAULT_FOLLOWUP_CONTACTS.map(c => ({ ...c }));
+}
+
+let followUpSaveChain = Promise.resolve();
+function saveFollowUpList(){
+  followUpSaveChain = followUpSaveChain.then(async () => {
+    try { await storage.set(FOLLOWUP_LIST_KEY, JSON.stringify(followUpData), true); }
+    catch (e) { console.error('Could not save follow-up list', e); }
+  });
+  return followUpSaveChain;
+}
+
+let followUpSaveTimer = null;
+function queueFollowUpSave(){
+  clearTimeout(followUpSaveTimer);
+  followUpSaveTimer = setTimeout(() => { followUpSaveTimer = null; saveFollowUpList(); }, 400);
+}
+function flushFollowUpSave(){
+  if (followUpSaveTimer){ clearTimeout(followUpSaveTimer); followUpSaveTimer = null; saveFollowUpList(); }
+}
+
+function renderFollowUpList(){
+  const box = document.getElementById('followUpBox');
+  box.innerHTML = '';
+  if (!followUpData.length){
+    box.innerHTML = '<div class="cheat-note">No one on the list yet — add a name below.</div>';
+    return;
+  }
+  // Not-done items first, done items sink to the bottom so the active to-dos stay visible.
+  const ordered = followUpData.map((item, idx) => ({ item, idx })).sort((a, b) => (a.item.done === b.item.done ? 0 : a.item.done ? 1 : -1));
+
+  ordered.forEach(({ item, idx }) => {
+    const row = document.createElement('div');
+    row.className = 'followup-row' + (item.done ? ' done' : '');
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = !!item.done;
+    checkbox.addEventListener('change', () => {
+      followUpData[idx].done = checkbox.checked;
+      queueFollowUpSave();
+      renderFollowUpList();
+    });
+
+    const nameInput = document.createElement('input');
+    nameInput.className = 'followup-name';
+    nameInput.value = item.name || '';
+    nameInput.placeholder = 'Name';
+    nameInput.addEventListener('input', () => {
+      followUpData[idx].name = nameInput.value;
+      queueFollowUpSave();
+    });
+
+    const actionSelect = document.createElement('select');
+    actionSelect.className = 'followup-action';
+    const actions = ['Send Brochure', 'Send Text', 'Call', 'Send Email', 'Vlad to Call', 'Other'];
+    actions.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a; opt.textContent = a;
+      if ((item.action || 'Send Brochure') === a) opt.selected = true;
+      actionSelect.appendChild(opt);
+    });
+    actionSelect.addEventListener('change', () => {
+      followUpData[idx].action = actionSelect.value;
+      queueFollowUpSave();
+    });
+
+    const notesInput = document.createElement('input');
+    notesInput.className = 'followup-notes';
+    notesInput.value = item.notes || '';
+    notesInput.placeholder = 'Notes (phone, project, etc.)';
+    notesInput.addEventListener('input', () => {
+      followUpData[idx].notes = notesInput.value;
+      queueFollowUpSave();
+    });
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'followup-remove';
+    removeBtn.textContent = '✕';
+    removeBtn.title = 'Remove from list';
+    removeBtn.addEventListener('click', () => {
+      followUpData.splice(idx, 1);
+      saveFollowUpList();
+      renderFollowUpList();
+    });
+
+    row.appendChild(checkbox);
+    row.appendChild(nameInput);
+    row.appendChild(actionSelect);
+    row.appendChild(notesInput);
+    row.appendChild(removeBtn);
+    box.appendChild(row);
+  });
+}
+
+document.getElementById('followUpBtn').addEventListener('click', async () => {
+  followUpData = await loadFollowUpList();
+  renderFollowUpList();
+  document.getElementById('followUpOverlay').classList.add('open');
+});
+document.getElementById('addFollowUpBtn').addEventListener('click', () => {
+  const input = document.getElementById('newFollowUpNameInput');
+  const name = input.value.trim();
+  if (!name) return;
+  followUpData.push({ name, action: 'Send Brochure', notes: '', done: false });
+  input.value = '';
+  saveFollowUpList();
+  renderFollowUpList();
+});
+document.getElementById('newFollowUpNameInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('addFollowUpBtn').click();
+});
+document.getElementById('closeFollowUpBtn').addEventListener('click', () => {
+  flushFollowUpSave();
+  document.getElementById('followUpOverlay').classList.remove('open');
+});
+document.getElementById('followUpOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'followUpOverlay'){
+    flushFollowUpSave();
+    document.getElementById('followUpOverlay').classList.remove('open');
+  }
+});
+
 /* ---------- Company standard documents (W-9, License, COI) — shared, upload once ---------- */
 const COMPANY_DOCS_KEY = 'westbridge-company-documents';
 function defaultCompanyDocs(){
@@ -1786,6 +2319,7 @@ async function loadVendorDetail(vendorName){
       if (!uploadedFiles.length && parsed.uploadedFile) uploadedFiles = [parsed.uploadedFile]; // migrate old single-file data
       return {
         formUrl: parsed.formUrl || '',
+        companyDomain: parsed.companyDomain || '',
         applicationMethods: methods,
         checklist: parsed.checklist || defaultChecklist(),
         notes: parsed.notes || '',
@@ -1799,7 +2333,7 @@ async function loadVendorDetail(vendorName){
       };
     }
   } catch (e) { /* none saved yet */ }
-  return { formUrl: '', applicationMethods: [], checklist: defaultChecklist(), notes: '', onBiddingList: false, uploadedFiles: [], estimates: [], estimatesReceived: [], estimatesPending: [], emailLog: [], gmailSearchTerm: '' };
+  return { formUrl: '', companyDomain: '', applicationMethods: [], checklist: defaultChecklist(), notes: '', onBiddingList: false, uploadedFiles: [], estimates: [], estimatesReceived: [], estimatesPending: [], emailLog: [], gmailSearchTerm: '' };
 }
 
 // Serialized (same reason as company docs above) — uploading several files back-to-back
@@ -1922,6 +2456,7 @@ async function openVendorDetail(vendor){
   document.getElementById('detailName').textContent = vendor.name;
   document.getElementById('detailSub').textContent = vendor.sub || '';
   document.getElementById('formUrlInput').value = currentDetail.formUrl || '';
+  document.getElementById('companyDomainInput').value = currentDetail.companyDomain || '';
   document.querySelectorAll('.app-method-cb').forEach(cb => {
     cb.checked = currentDetail.applicationMethods.includes(cb.value);
   });
@@ -2078,6 +2613,13 @@ function updateOpenFormBtn(){
 document.getElementById('formUrlInput').addEventListener('input', () => {
   currentDetail.formUrl = document.getElementById('formUrlInput').value.trim();
   updateOpenFormBtn();
+  queueSave();
+});
+document.getElementById('companyDomainInput').addEventListener('input', (e) => {
+  // Normalize common paste mistakes: strip protocol, "www.", and any path — keep just the domain.
+  let v = e.target.value.trim().toLowerCase();
+  v = v.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+  currentDetail.companyDomain = v;
   queueSave();
 });
 document.querySelectorAll('.app-method-cb').forEach(cb => {
@@ -2803,9 +3345,17 @@ async function searchGmailForCurrentVendor(){
     // instead of any email containing "Miller" and "Construction" separately, which pulls in
     // unrelated emails (a different "Miller" who happens to also mention "construction").
     const searchTerm = term.includes(' ') && !term.startsWith('"') ? `"${term}"` : term;
-    // No longer excludes emails to/from Natalia or Vladimir — those exclusions were hiding
-    // legitimate emails (e.g. Maria forwarding a vendor's application link to Natalia).
-    const fullQuery = searchTerm;
+    const knownDomain = (currentDetail && currentDetail.companyDomain) ? currentDetail.companyDomain.trim() : '';
+    // Restricting the name match to the SUBJECT line (not "anywhere in the email") is what
+    // keeps internal digest emails out — a "EOD" recap that lists several companies in its
+    // body would otherwise match every one of those companies' searches, even though it's
+    // not really correspondence about any single one of them. Real correspondence about a
+    // vendor almost always names them in the subject line.
+    const subjectQuery = `subject:${searchTerm}`;
+    // If we know this vendor's real email domain, also match anything from that domain —
+    // catches real correspondence that doesn't happen to spell out the company name in
+    // the subject (e.g. someone at the GC emailing from their own domain about a project).
+    const fullQuery = knownDomain ? `(${subjectQuery}) OR from:@${knownDomain}` : subjectQuery;
     const listRes = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(fullQuery)}&maxResults=8`,
       { headers: { Authorization: `Bearer ${gmailAccessToken}` } }
@@ -2861,6 +3411,10 @@ async function searchGmailForCurrentVendor(){
       const snippet = msg.snippet || '';
       const permalink = `https://mail.google.com/mail/u/0/#all/${msg.threadId || msg.id}`;
 
+      const senderEmailMatch = from.match(/[\w.+-]+@([\w-]+\.[\w.-]+)/);
+      const senderDomain = senderEmailMatch ? senderEmailMatch[1].toLowerCase() : '';
+      const isDomainMatch = !!(knownDomain && senderDomain === knownDomain.toLowerCase());
+
       const bodyText = extractGmailBodyText(msg.payload);
       window.gmailRawHtmlCache[msg.id] = extractGmailRawHtml(msg.payload);
       const links = extractLinksFromText(bodyText || snippet);
@@ -2872,12 +3426,13 @@ async function searchGmailForCurrentVendor(){
       if (dueDateFound && !bestDueDate) bestDueDate = dueDateFound;
 
       // Only auto-add a message as a "project" if it actually shows a real signal that
-      // it's about this vendor's work — either a due date was found, or the text reads
-      // like an estimate/bid request. Just appearing in the search results isn't enough:
-      // that let generic company-wide documents (prequal forms, safety manuals, etc.)
-      // get added even when they had nothing to do with this specific vendor.
+      // it's about this vendor's work — either a due date was found, the text reads like
+      // an estimate/bid request, OR it's confirmed to come from this vendor's actual email
+      // domain. Just appearing in the search results isn't enough on its own: that let
+      // generic company-wide documents (prequal forms, safety manuals, etc.) get added
+      // even when they had nothing to do with this specific vendor.
       const looksLikeEstimateRequest = estimateRequestPattern.test(subject + ' ' + snippet + ' ' + bodyText);
-      if (!alreadyPending.has(msg.id) && !automatedSenderPattern.test(from) && (dueDateFound || looksLikeEstimateRequest)){
+      if (!alreadyPending.has(msg.id) && !automatedSenderPattern.test(from) && (dueDateFound || looksLikeEstimateRequest || isDomainMatch)){
         if (!dueDateFound){
           const dateImages = findDateImagesInHtml(window.gmailRawHtmlCache[msg.id]);
           if (dateImages.length){
@@ -2900,7 +3455,7 @@ async function searchGmailForCurrentVendor(){
       // those relay real bid invites, they aren't spam.)
       if (
         !alreadyAdded.has(msg.id) &&
-        estimateRequestPattern.test(subject + ' ' + snippet + ' ' + bodyText)
+        (estimateRequestPattern.test(subject + ' ' + snippet + ' ' + bodyText) || isDomainMatch)
       ){
         autoAddCandidates.push({ msg, from, subject, date, snippet, bodyText, links, attachments, permalink });
       }
@@ -2909,11 +3464,17 @@ async function searchGmailForCurrentVendor(){
         ? `<div class="gm-links"><b>🔗 Links in this email:</b><br>${links.map(l => `<a href="${escapeHtml(l)}" target="_blank">${escapeHtml(l.length > 60 ? l.slice(0, 60) + '…' : l)}</a>`).join('<br>')}</div>`
         : '';
 
+      const domainBadge = knownDomain
+        ? (isDomainMatch
+            ? `<span style="font-size:10px; font-weight:800; padding:2px 7px; border-radius:5px; background:var(--ok-dim); color:var(--ok); margin-left:6px;">✓ verified domain</span>`
+            : `<span style="font-size:10px; font-weight:700; padding:2px 7px; border-radius:5px; background:var(--panel-2); color:var(--text-dim); margin-left:6px;" title="Sender's domain doesn't match ${escapeHtml(knownDomain)} — double-check this is really about this vendor">? unverified</span>`)
+        : '';
+
       const card = document.createElement('div');
       card.className = 'gmail-msg-card';
       card.innerHTML = `
         <div class="gm-top">
-          <span class="gm-from">${escapeHtml(from)}</span>
+          <span class="gm-from">${escapeHtml(from)}${domainBadge}</span>
           <span class="gm-date">${escapeHtml(date ? new Date(date).toLocaleDateString() : '')}</span>
         </div>
         <div class="gm-subject">${escapeHtml(subject)}</div>
@@ -3596,6 +4157,7 @@ function flushAllPendingSaves(){
   try { flushCheatFieldsSave(); } catch (e) {}
   try { flushMissingInfoSave(); } catch (e) {}
   try { flushPlatformAccessSave(); } catch (e) {}
+  try { flushFollowUpSave(); } catch (e) {}
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') flushAllPendingSaves();
@@ -3634,6 +4196,9 @@ function emergencyBeaconFlushOnUnload(){
   } catch (e) {}
   try {
     if (companyDocsData) beaconSave(COMPANY_DOCS_KEY, JSON.stringify(companyDocsData));
+  } catch (e) {}
+  try {
+    if (followUpData && followUpData.length) beaconSave(FOLLOWUP_LIST_KEY, JSON.stringify(followUpData));
   } catch (e) {}
 }
 window.addEventListener('pagehide', emergencyBeaconFlushOnUnload);
