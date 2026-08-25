@@ -498,6 +498,7 @@
   .bid-card .bp-meta{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
   .bid-card .bp-tag{ font-size:10px; font-weight:700; padding:2px 7px; border-radius:5px; background:var(--panel); border:1px solid var(--line); color:var(--text-dim); }
   .bid-card .bp-tag.deadline{ color:var(--warn); border-color:var(--warn); }
+  .bid-card .bp-tag.deadline.overdue{ color:var(--danger); border-color:var(--danger); background:var(--danger-dim); font-weight:800; }
   .bid-card .bp-tag.working{ color:var(--safety); border-color:var(--safety); background:var(--warn-dim); }
   .bid-card .bp-notes{ font-size:11.5px; color:var(--text-dim); margin-bottom:8px; line-height:1.4; }
   .bid-card .bp-actions{ display:flex; gap:6px; flex-wrap:wrap; }
@@ -904,6 +905,7 @@
     </div>
     <div class="add-item-row" style="margin-top:18px;">
       <button id="addBidProjectBtn" class="btn primary">+ Add Bid Project</button>
+      <button id="clearExpiredBtn" class="btn" style="background:var(--danger-dim); color:var(--danger); border-color:var(--danger);">🧹 Clear Expired Projects</button>
     </div>
   </div>
 </div>
@@ -2782,7 +2784,7 @@ async function saveBidProjectOverrides(overrides){
 async function loadBidProjects(){
   const board = document.getElementById('bidProjectsBoard');
   const overrides = await loadBidProjectOverrides();
-  const manualAdds = Object.values(overrides).filter(o => o.__manual);
+  const manualAdds = Object.values(overrides).filter(o => o.__manual && !o.__removed);
 
   if (!BID_PROJECTS_CSV_URL || BID_PROJECTS_CSV_URL.startsWith('PASTE_')){
     // No Sheet tab connected yet — still show anything added manually in-app.
@@ -2795,14 +2797,17 @@ async function loadBidProjects(){
     const res = await fetch(BID_PROJECTS_CSV_URL + (BID_PROJECTS_CSV_URL.includes('?') ? '&' : '?') + '_ts=' + Date.now(), { cache: 'no-store' });
     const text = await res.text();
     let fromSheet = parseBidProjectsCsv(text);
-    // Apply any local status/working overrides (from drag-and-drop) on top of the Sheet data.
-    fromSheet = fromSheet.map(p => {
-      const o = overrides[p.id];
-      if (o){
-        return Object.assign({}, p, { status: o.status || p.status, working: o.working != null ? o.working : p.working });
-      }
-      return p;
-    });
+    // Apply any local status/working overrides (from drag-and-drop) on top of the Sheet data,
+    // and drop anything the user explicitly removed (e.g. via "Clear Expired Projects").
+    fromSheet = fromSheet
+      .filter(p => !(overrides[p.id] && overrides[p.id].__removed))
+      .map(p => {
+        const o = overrides[p.id];
+        if (o){
+          return Object.assign({}, p, { status: o.status || p.status, working: o.working != null ? o.working : p.working });
+        }
+        return p;
+      });
     bidProjects = fromSheet.concat(manualAdds.filter(m => !fromSheet.some(f => f.id === m.id)));
   } catch(e){
     board.innerHTML = '<div class="msg">Could not load Bid Projects sheet. Showing locally-added projects only.</div>';
@@ -2813,6 +2818,15 @@ async function loadBidProjects(){
 
 function bidStatusLabel(s){
   return { 'not-started': '🔴 Not Sent', 'in-progress': '🟠 Building Bid', 'ready': '🟢 Ready to Send' }[s] || s;
+}
+
+function isDeadlinePast(deadlineStr){
+  if (!deadlineStr) return false;
+  const d = parseFlexDate(deadlineStr);
+  if (!d) return false;
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  return d < today;
 }
 
 function renderBidBoard(){
@@ -2889,7 +2903,7 @@ function buildBidCardEl(p){
     <div class="bp-name">${escapeHtml(p.project)}</div>
     <div class="bp-company">${escapeHtml(p.company)}${p.platform ? ' · via ' + escapeHtml(p.platform) : ''}</div>
     <div class="bp-meta">
-      ${p.deadline ? `<span class="bp-tag deadline">Due ${escapeHtml(p.deadline)}</span>` : ''}
+      ${p.deadline ? `<span class="bp-tag deadline${isDeadlinePast(p.deadline) ? ' overdue' : ''}">${isDeadlinePast(p.deadline) ? '⚠️ Overdue — was due' : 'Due'} ${escapeHtml(p.deadline)}</span>` : ''}
       ${p.working ? `<span class="bp-tag working">🔨 Working now</span>` : ''}
     </div>
     ${p.notes ? `<div class="bp-notes">${escapeHtml(p.notes)}</div>` : ''}
@@ -2943,6 +2957,22 @@ function openBidProjectEditor(p){
   document.getElementById('bidProjectEditOverlay').classList.add('open');
 }
 document.getElementById('addBidProjectBtn').addEventListener('click', () => openBidProjectEditor(null));
+document.getElementById('clearExpiredBtn').addEventListener('click', async () => {
+  const expired = bidProjects.filter(p => isDeadlinePast(p.deadline) && p.status !== 'ready');
+  if (!expired.length){
+    alert('No overdue projects found (excluding ones already marked "Ready to Send").');
+    return;
+  }
+  const names = expired.map(p => `• ${p.project}`).join('\n');
+  if (!confirm(`Remove ${expired.length} overdue project(s) from the board?\n\n${names}`)) return;
+
+  const overrides = await loadBidProjectOverrides();
+  expired.forEach(p => { delete overrides[p.id]; overrides[p.id] = Object.assign({}, overrides[p.id], { __removed: true }); });
+  await saveBidProjectOverrides(overrides);
+
+  bidProjects = bidProjects.filter(p => !expired.some(e => e.id === p.id));
+  renderBidBoard();
+});
 document.getElementById('closeBidProjectEditBtn').addEventListener('click', () => {
   document.getElementById('bidProjectEditOverlay').classList.remove('open');
 });
