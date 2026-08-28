@@ -859,6 +859,10 @@
     </div>
     <p class="cheat-note" style="color:var(--warn);">⚠ Passwords are stored here at your request, hidden by default (click "Show" to reveal). Remember: anyone who has the tracker's link can open this panel — there's no login on the tracker itself. Only share this link with people who should have this access.</p>
     <div id="platformFieldsBox"></div>
+    <div class="add-item-row" style="margin-top:14px;">
+      <input type="text" id="newPlatformLabel" placeholder="Platform name (e.g. SmartBid)">
+      <button id="addPlatformBtn">+ Add Platform</button>
+    </div>
   </div>
 </div>
 
@@ -1797,7 +1801,10 @@ function renderPlatformAccess(){
     const wrap = document.createElement('div');
     wrap.style.marginBottom = '18px';
     wrap.innerHTML = `
-      <div class="section-title" style="margin-top:0;">${escapeHtml(p.label)}</div>
+      <div class="section-title" style="margin-top:0; display:flex; justify-content:space-between; align-items:center;">
+        <span>${escapeHtml(p.label)}</span>
+        <button class="cheat-copy-btn remove-platform-btn" style="color:var(--danger); border-color:var(--danger);">Remove</button>
+      </div>
       <div class="cheat-row">
         <span class="cheat-label">Login link</span>
         <input type="text" data-field="loginUrl" value="${escapeHtml(p.loginUrl)}" placeholder="https://...">
@@ -1863,6 +1870,12 @@ function renderPlatformAccess(){
         }
       });
     });
+    wrap.querySelector('.remove-platform-btn').addEventListener('click', () => {
+      if (!confirm(`Remove "${p.label}" from Platform Access?`)) return;
+      platformData = platformData.filter(x => x.id !== p.id);
+      queuePlatformAccessSave();
+      renderPlatformAccess();
+    });
     box.appendChild(wrap);
   });
 }
@@ -1881,6 +1894,17 @@ document.getElementById('platformOverlay').addEventListener('click', (e) => {
     flushPlatformAccessSave();
     document.getElementById('platformOverlay').classList.remove('open');
   }
+});
+document.getElementById('addPlatformBtn').addEventListener('click', () => {
+  const input = document.getElementById('newPlatformLabel');
+  const label = input.value.trim();
+  if (!label){ alert('Enter a platform name first (e.g. SmartBid).'); return; }
+  const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  if (platformData.some(p => p.id === id)){ alert(`"${label}" is already in the list.`); return; }
+  platformData.push({ id, label, loginUrl: '', username: '', password: '', note: '' });
+  queuePlatformAccessSave();
+  input.value = '';
+  renderPlatformAccess();
 });
 
 /* ---------- Quick Follow-Up List (brochure / text / Vlad call to-dos) ---------- */
